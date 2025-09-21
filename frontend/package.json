@@ -1,0 +1,37 @@
+{
+  "name": "csv-opener-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start -p 3000",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "next": "14.0.4",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "@nextui-org/react": "^2.2.9",
+    "@nextui-org/theme": "^2.1.17",
+    "framer-motion": "^11.5.6",
+    "zustand": "^4.4.7",
+    "papaparse": "^5.4.1",
+    "lucide-react": "^0.294.0",
+    "next-themes": "^0.2.1",
+    "clsx": "^2.0.0",
+    "tailwind-merge": "^2.2.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "@types/node": "^20.10.5",
+    "@types/react": "^18.2.45",
+    "@types/react-dom": "^18.2.18",
+    "@types/papaparse": "^5.3.14",
+    "autoprefixer": "^10.4.16",
+    "postcss": "^8.4.32",
+    "tailwindcss": "^3.3.6",
+    "eslint": "^8.56.0",
+    "eslint-config-next": "14.0.4"
+  }
+}

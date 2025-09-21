@@ -1,0 +1,443 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+  
+  body {
+    @apply text-foreground;
+    background-color: #f8f9fa;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    font-variant-numeric: tabular-nums;
+  }
+  
+  .dark body {
+    @apply bg-background;
+  }
+}
+
+@layer components {
+  .gradient-bg {
+    @apply bg-gradient-to-br from-background via-background to-primary-50/10;
+  }
+  
+  .dark .gradient-bg {
+    @apply bg-gradient-to-br from-background via-background to-primary-900/10;
+  }
+  
+  .glass-effect {
+    @apply bg-background/95 backdrop-blur-md border border-divider/50 shadow-bubbly;
+  }
+  
+  .dark .glass-effect {
+    box-shadow: 0 0.25rem 0.5rem rgba(59, 130, 246, 0.2), 0 0 1rem rgba(59, 130, 246, 0.1);
+  }
+  
+  .card-bubbly {
+    @apply bg-background border border-divider/50 rounded-bubbly shadow-bubbly;
+  }
+  
+  .dark .card-bubbly {
+    @apply bg-secondary/50 border-divider/30;
+    box-shadow: 0 0.25rem 0.5rem rgba(59, 130, 246, 0.2), 0 0 1rem rgba(59, 130, 246, 0.1);
+  }
+  
+  
+  .card-header-shadow {
+    box-shadow: 0 .125rem .25rem rgba(0, 0, 0, .075);
+  }
+  
+  .dark .card-header-shadow {
+    box-shadow: 0 .125rem .25rem rgba(59, 130, 246, 0.3), 0 0 0.5rem rgba(59, 130, 246, 0.1);
+  }
+  
+  .glow-primary {
+    box-shadow: 0 0.25rem 0.5rem rgba(59, 130, 246, 0.2), 0 0 1rem rgba(59, 130, 246, 0.1);
+  }
+  
+  .dark .glow-primary {
+    box-shadow: 0 0.25rem 0.5rem rgba(59, 130, 246, 0.2), 0 0 1rem rgba(59, 130, 246, 0.1);
+  }
+  
+  .card-footer-bg {
+    background-color: #f7f7f7;
+  }
+  
+  .dark .card-footer-bg {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+  
+  .table-compact {
+    @apply w-full;
+  }
+  
+  .table-compact thead tr {
+    @apply border-b border-divider/30;
+  }
+  
+  .table-compact th {
+    @apply text-left py-3 px-4 font-black text-foreground/90 text-sm;
+  }
+  
+  .table-compact tbody tr {
+    @apply border-b border-divider/20 transition-colors duration-150;
+  }
+  
+  .table-compact tbody tr:nth-child(even) {
+    @apply bg-secondary/20;
+  }
+  
+  .table-compact tbody tr:hover {
+    background-color: #f7f7f7;
+  }
+  
+  .dark .table-compact tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+  
+  .table-compact td {
+    @apply py-3 px-4 text-sm text-foreground;
+  }
+  
+  .table-compact td:first-child {
+    @apply font-black;
+  }
+  
+  .card-hover {
+    @apply transition-all duration-200;
+  }
+  
+  .animate-pulse-slow {
+    animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  
+  .animate-bounce-slow {
+    animation: bounce 2s infinite;
+  }
+  
+  .text-gradient {
+    @apply bg-gradient-to-r from-primary-500 to-primary-600 bg-clip-text text-transparent;
+  }
+  
+  .border-gradient {
+    @apply border border-transparent bg-gradient-to-r from-primary-500/20 to-primary-600/20 bg-clip-border;
+  }
+}
+
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+/* Custom animations */
+@keyframes shimmer {
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: calc(200px + 100%) 0;
+  }
+}
+
+.shimmer {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  background-size: 200px 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Dark mode shimmer */
+.dark .shimmer {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  background-size: 200px 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Loading spinner */
+.spinner {
+  border: 2px solid transparent;
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Progress bar animation */
+.progress-bar {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  background-size: 200px 100%;
+  animation: shimmer 2s infinite;
+}
+
+/* Custom scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  @apply bg-default-100 rounded-full;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  @apply bg-default-300 rounded-full;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  @apply bg-default-400;
+}
+
+/* Focus styles */
+.focus-ring {
+  @apply focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-background;
+}
+
+/* Button variants */
+.btn-gradient {
+  @apply bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-lg transition-all duration-200;
+}
+
+/* Card variants */
+.card-elevated {
+  @apply shadow-lg transition-shadow duration-200;
+}
+
+.card-interactive {
+  @apply cursor-pointer transition-all duration-200;
+}
+
+/* Status indicators */
+.status-success {
+  @apply bg-success-100 text-success-800 border border-success-200;
+}
+
+.status-warning {
+  @apply bg-warning-100 text-warning-800 border border-warning-200;
+}
+
+.status-danger {
+  @apply bg-danger-100 text-danger-800 border border-danger-200;
+}
+
+.status-info {
+  @apply bg-primary-100 text-primary-800 border border-primary-200;
+}
+
+/* Dark mode status indicators */
+.dark .status-success {
+  @apply bg-success-900/20 text-success-300 border-success-800;
+}
+
+.dark .status-warning {
+  @apply bg-warning-900/20 text-warning-300 border-warning-800;
+}
+
+.dark .status-danger {
+  @apply bg-danger-900/20 text-danger-300 border-danger-800;
+}
+
+.dark .status-info {
+  @apply bg-primary-900/20 text-primary-300 border-primary-800;
+}
+
+/* Fix NextUI ripple effect overflow */
+[data-slot="base"] {
+  overflow: hidden !important;
+}
+
+/* Ensure all NextUI buttons have contained ripple effects */
+button[data-slot="base"],
+[role="button"][data-slot="base"] {
+  overflow: hidden !important;
+  position: relative !important;
+}
+
+/* Fix ripple effect for icon buttons */
+button[data-slot="base"][aria-label],
+[role="button"][data-slot="base"][aria-label] {
+  overflow: hidden !important;
+}
+
+/* Fix ripple effect for buttons with specific classes */
+.btn-contained-ripple,
+.rounded-bubbly,
+button[class*="rounded-"] {
+  overflow: hidden !important;
+}
+
+/* Ensure ripple effect stays within button boundaries */
+[data-slot="base"] .nextui-ripple {
+  overflow: hidden !important;
+}
+
+/* Fix for NextUI Button component specifically */
+.nextui-button {
+  overflow: hidden !important;
+}
+
+/* Fix for any element with ripple effect */
+[data-ripple] {
+  overflow: hidden !important;
+}
+
+/* Additional fixes for NextUI ripple containment */
+.nextui-ripple-container {
+  overflow: hidden !important;
+  position: relative !important;
+}
+
+/* Fix ripple effect for all button types */
+button,
+[role="button"] {
+  overflow: hidden !important;
+}
+
+/* Specific fix for NextUI Button ripple */
+.nextui-button-base {
+  overflow: hidden !important;
+}
+
+/* Fix for ripple effect in various button states */
+.nextui-button-base::before,
+.nextui-button-base::after {
+  overflow: hidden !important;
+}
+
+/* Ensure ripple effect is contained within rounded buttons */
+.rounded-bubbly,
+.rounded-lg,
+.rounded-md {
+  overflow: hidden !important;
+}
+
+/* Fix NextUI button icon and text alignment */
+.nextui-button-base {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Ensure button content is horizontal */
+.nextui-button-base .nextui-button-content {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+}
+
+/* Fix for buttons with startContent */
+.nextui-button-base [data-slot="startContent"] {
+  display: flex !important;
+  align-items: center !important;
+  margin-right: 0.5rem !important;
+}
+
+/* Fix for buttons with endContent */
+.nextui-button-base [data-slot="endContent"] {
+  display: flex !important;
+  align-items: center !important;
+  margin-left: 0.5rem !important;
+}
+
+/* Ensure all button content is horizontal */
+button[data-slot="base"] {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+}
+
+/* Fix for NextUI Button component specifically */
+.nextui-button {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+}
+
+/* Fix for any button with icons */
+button:has(svg),
+[role="button"]:has(svg) {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+}
+
+/* Standardize all buttons to match Start Processing button style */
+.nextui-button-base,
+button[data-slot="base"],
+[role="button"][data-slot="base"] {
+  border: 1px solid rgba(229, 231, 235, 0.5) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+  font-weight: 500 !important;
+  transition: all 0.3s ease !important;
+}
+
+/* Hover effects for all buttons - matching Start Processing button */
+.nextui-button-base:hover,
+button[data-slot="base"]:hover,
+[role="button"][data-slot="base"]:hover {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Dark mode button borders */
+.dark .nextui-button-base,
+.dark button[data-slot="base"],
+.dark [role="button"][data-slot="base"] {
+  border: 1px solid rgba(51, 65, 85, 0.5) !important;
+}
+
+/* Dropdown styling to match Start Processing button */
+select {
+  border: 1px solid rgba(229, 231, 235, 0.5) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+  transition: all 0.3s ease !important;
+}
+
+select:hover {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+}
+
+select:focus {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Dark mode dropdown borders */
+.dark select {
+  border: 1px solid rgba(51, 65, 85, 0.5) !important;
+}
+
+/* Ensure all NextUI buttons use consistent styling - matching Start Processing button */
+.nextui-button {
+  border: 1px solid rgba(229, 231, 235, 0.5) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+  font-weight: 500 !important;
+  transition: all 0.3s ease !important;
+}
+
+.nextui-button:hover {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+}
+
+.dark .nextui-button {
+  border: 1px solid rgba(51, 65, 85, 0.5) !important;
+}

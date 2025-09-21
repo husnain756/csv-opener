@@ -1,0 +1,130 @@
+{"level":"info","message":"🚀 Server running on port 3001","service":"csv-opener-backend","timestamp":"2025-09-19 12:27:01"}
+{"level":"info","message":"📊 Environment: development","service":"csv-opener-backend","timestamp":"2025-09-19 12:27:01"}
+{"level":"info","message":"🔗 Redis URL: redis://localhost:6379","service":"csv-opener-backend","timestamp":"2025-09-19 12:27:01"}
+{"level":"info","message":"Redis connected successfully","service":"csv-opener-backend","timestamp":"2025-09-19 12:27:01"}
+{"level":"info","message":"Redis ping successful","service":"csv-opener-backend","timestamp":"2025-09-19 12:27:01"}
+{"level":"info","message":"🚀 Server running on port 3001","service":"csv-opener-backend","timestamp":"2025-09-19 14:42:19"}
+{"level":"info","message":"📊 Environment: development","service":"csv-opener-backend","timestamp":"2025-09-19 14:42:19"}
+{"level":"info","message":"🔗 Redis URL: redis://localhost:6379","service":"csv-opener-backend","timestamp":"2025-09-19 14:42:19"}
+{"level":"info","message":"Redis connected successfully","service":"csv-opener-backend","timestamp":"2025-09-19 14:42:19"}
+{"level":"info","message":"Redis ping successful","service":"csv-opener-backend","timestamp":"2025-09-19 14:42:19"}
+{"level":"info","message":"🚀 Server running on port 3001","service":"csv-opener-backend","timestamp":"2025-09-19 14:48:23"}
+{"level":"info","message":"📊 Environment: development","service":"csv-opener-backend","timestamp":"2025-09-19 14:48:23"}
+{"level":"info","message":"🔗 Redis URL: redis://localhost:6379","service":"csv-opener-backend","timestamp":"2025-09-19 14:48:23"}
+{"level":"info","message":"Redis connected successfully","service":"csv-opener-backend","timestamp":"2025-09-19 14:48:23"}
+{"level":"info","message":"Redis ping successful","service":"csv-opener-backend","timestamp":"2025-09-19 14:48:23"}
+{"level":"info","message":"🚀 Server running on port 3001","service":"csv-opener-backend","timestamp":"2025-09-19 14:52:20"}
+{"level":"info","message":"📊 Environment: development","service":"csv-opener-backend","timestamp":"2025-09-19 14:52:20"}
+{"level":"info","message":"🔗 Redis URL: redis://localhost:6379","service":"csv-opener-backend","timestamp":"2025-09-19 14:52:20"}
+{"level":"info","message":"Redis connected successfully","service":"csv-opener-backend","timestamp":"2025-09-19 14:52:20"}
+{"level":"info","message":"Redis ping successful","service":"csv-opener-backend","timestamp":"2025-09-19 14:52:20"}
+{"level":"info","message":"🚀 Server running on port 3001","service":"csv-opener-backend","timestamp":"2025-09-19 14:59:49"}
+{"level":"info","message":"📊 Environment: development","service":"csv-opener-backend","timestamp":"2025-09-19 14:59:49"}
+{"level":"info","message":"🔗 Redis URL: redis://localhost:6379","service":"csv-opener-backend","timestamp":"2025-09-19 14:59:49"}
+{"level":"info","message":"Redis connected successfully","service":"csv-opener-backend","timestamp":"2025-09-19 14:59:49"}
+{"level":"info","message":"Redis ping successful","service":"csv-opener-backend","timestamp":"2025-09-19 14:59:49"}
+{"level":"info","message":"Received shutdown signal, closing server gracefully...","service":"csv-opener-backend","timestamp":"2025-09-19 21:21:00"}
+{"level":"info","message":"HTTP server closed","service":"csv-opener-backend","timestamp":"2025-09-19 21:21:00"}
+{"level":"info","message":"🚀 Server running on port 3001","service":"csv-opener-backend","timestamp":"2025-09-19 21:21:10"}
+{"level":"info","message":"📊 Environment: development","service":"csv-opener-backend","timestamp":"2025-09-19 21:21:10"}
+{"level":"info","message":"🔗 Redis URL: redis://localhost:6379","service":"csv-opener-backend","timestamp":"2025-09-19 21:21:10"}
+{"level":"info","message":"Redis connected successfully","service":"csv-opener-backend","timestamp":"2025-09-19 21:21:10"}
+{"level":"info","message":"Redis ping successful","service":"csv-opener-backend","timestamp":"2025-09-19 21:21:10"}
+{"level":"info","message":"Received shutdown signal, closing server gracefully...","service":"csv-opener-backend","timestamp":"2025-09-19 21:52:48"}
+{"level":"info","message":"HTTP server closed","service":"csv-opener-backend","timestamp":"2025-09-19 21:52:48"}
+{"level":"info","message":"🚀 Server running on port 3001","service":"csv-opener-backend","timestamp":"2025-09-19 21:52:55"}
+{"level":"info","message":"📊 Environment: development","service":"csv-opener-backend","timestamp":"2025-09-19 21:52:55"}
+{"level":"info","message":"🔗 Redis URL: redis://localhost:6379","service":"csv-opener-backend","timestamp":"2025-09-19 21:52:55"}
+{"level":"info","message":"Redis connected successfully","service":"csv-opener-backend","timestamp":"2025-09-19 21:52:55"}
+{"level":"info","message":"Redis ping successful","service":"csv-opener-backend","timestamp":"2025-09-19 21:52:55"}
+{"level":"info","message":"Received shutdown signal, closing server gracefully...","service":"csv-opener-backend","timestamp":"2025-09-19 22:44:57"}
+{"level":"info","message":"HTTP server closed","service":"csv-opener-backend","timestamp":"2025-09-19 22:44:57"}
+{"level":"info","message":"🚀 Server running on port 3001","service":"csv-opener-backend","timestamp":"2025-09-19 22:45:03"}
+{"level":"info","message":"📊 Environment: development","service":"csv-opener-backend","timestamp":"2025-09-19 22:45:03"}
+{"level":"info","message":"🔗 Redis URL: redis://localhost:6379","service":"csv-opener-backend","timestamp":"2025-09-19 22:45:03"}
+{"level":"info","message":"Redis connected successfully","service":"csv-opener-backend","timestamp":"2025-09-19 22:45:03"}
+{"level":"info","message":"Redis ping successful","service":"csv-opener-backend","timestamp":"2025-09-19 22:45:03"}
+{"level":"info","message":"Received shutdown signal, closing server gracefully...","service":"csv-opener-backend","timestamp":"2025-09-19 22:53:03"}
+{"level":"info","message":"HTTP server closed","service":"csv-opener-backend","timestamp":"2025-09-19 22:53:03"}
+{"level":"info","message":"🚀 Server running on port 3001","service":"csv-opener-backend","timestamp":"2025-09-19 22:53:09"}
+{"level":"info","message":"📊 Environment: development","service":"csv-opener-backend","timestamp":"2025-09-19 22:53:09"}
+{"level":"info","message":"🔗 Redis URL: redis://localhost:6379","service":"csv-opener-backend","timestamp":"2025-09-19 22:53:09"}
+{"level":"info","message":"Redis connected successfully","service":"csv-opener-backend","timestamp":"2025-09-19 22:53:09"}
+{"level":"info","message":"Redis ping successful","service":"csv-opener-backend","timestamp":"2025-09-19 22:53:09"}
+{"level":"info","message":"Received shutdown signal, closing server gracefully...","service":"csv-opener-backend","timestamp":"2025-09-19 22:57:29"}
+{"level":"info","message":"HTTP server closed","service":"csv-opener-backend","timestamp":"2025-09-19 22:57:29"}
+{"level":"info","message":"🚀 Server running on port 3001","service":"csv-opener-backend","timestamp":"2025-09-19 22:57:34"}
+{"level":"info","message":"📊 Environment: development","service":"csv-opener-backend","timestamp":"2025-09-19 22:57:34"}
+{"level":"info","message":"🔗 Redis URL: redis://localhost:6379","service":"csv-opener-backend","timestamp":"2025-09-19 22:57:34"}
+{"level":"info","message":"Redis connected successfully","service":"csv-opener-backend","timestamp":"2025-09-19 22:57:34"}
+{"level":"info","message":"Redis ping successful","service":"csv-opener-backend","timestamp":"2025-09-19 22:57:34"}
+{"level":"info","message":"Received shutdown signal, closing server gracefully...","service":"csv-opener-backend","timestamp":"2025-09-19 23:22:47"}
+{"level":"info","message":"HTTP server closed","service":"csv-opener-backend","timestamp":"2025-09-19 23:22:47"}
+{"level":"info","message":"🚀 Server running on port 3001","service":"csv-opener-backend","timestamp":"2025-09-19 23:22:53"}
+{"level":"info","message":"📊 Environment: development","service":"csv-opener-backend","timestamp":"2025-09-19 23:22:53"}
+{"level":"info","message":"🔗 Redis URL: redis://localhost:6379","service":"csv-opener-backend","timestamp":"2025-09-19 23:22:53"}
+{"level":"info","message":"Redis connected successfully","service":"csv-opener-backend","timestamp":"2025-09-19 23:22:53"}
+{"level":"info","message":"Redis ping successful","service":"csv-opener-backend","timestamp":"2025-09-19 23:22:53"}
+{"level":"info","message":"🚀 Server running on port 3001","service":"csv-opener-backend","timestamp":"2025-09-19 23:55:50"}
+{"level":"info","message":"📊 Environment: development","service":"csv-opener-backend","timestamp":"2025-09-19 23:55:50"}
+{"level":"info","message":"🔗 Redis URL: redis://localhost:6379","service":"csv-opener-backend","timestamp":"2025-09-19 23:55:50"}
+{"level":"info","message":"Redis connected successfully","service":"csv-opener-backend","timestamp":"2025-09-19 23:55:50"}
+{"level":"info","message":"Redis ping successful","service":"csv-opener-backend","timestamp":"2025-09-19 23:55:50"}
+{"level":"info","message":"Received shutdown signal, closing server gracefully...","service":"csv-opener-backend","timestamp":"2025-09-19 23:57:17"}
+{"level":"info","message":"🚀 Server running on port 3001","service":"csv-opener-backend","timestamp":"2025-09-21 09:24:54"}
+{"level":"info","message":"📊 Environment: development","service":"csv-opener-backend","timestamp":"2025-09-21 09:24:54"}
+{"level":"info","message":"🔗 Redis URL: redis://localhost:6379","service":"csv-opener-backend","timestamp":"2025-09-21 09:24:54"}
+{"level":"info","message":"Redis connected successfully","service":"csv-opener-backend","timestamp":"2025-09-21 09:24:54"}
+{"level":"info","message":"Redis ping successful","service":"csv-opener-backend","timestamp":"2025-09-21 09:24:54"}
+{"level":"info","message":"Received shutdown signal, closing server gracefully...","service":"csv-opener-backend","timestamp":"2025-09-21 09:42:40"}
+{"level":"info","message":"HTTP server closed","service":"csv-opener-backend","timestamp":"2025-09-21 09:42:40"}
+{"level":"info","message":"🚀 Server running on port 3001","service":"csv-opener-backend","timestamp":"2025-09-21 09:51:25"}
+{"level":"info","message":"📊 Environment: development","service":"csv-opener-backend","timestamp":"2025-09-21 09:51:25"}
+{"level":"info","message":"🔗 Redis URL: redis://localhost:6380","service":"csv-opener-backend","timestamp":"2025-09-21 09:51:25"}
+{"level":"info","message":"Redis connected successfully","service":"csv-opener-backend","timestamp":"2025-09-21 09:51:25"}
+{"level":"info","message":"Redis ping successful","service":"csv-opener-backend","timestamp":"2025-09-21 09:51:25"}
+{"level":"info","message":"Received shutdown signal, closing server gracefully...","service":"csv-opener-backend","timestamp":"2025-09-21 09:51:31"}
+{"level":"info","message":"HTTP server closed","service":"csv-opener-backend","timestamp":"2025-09-21 09:51:31"}
+{"level":"info","message":"🚀 Server running on port 3001","service":"csv-opener-backend","timestamp":"2025-09-21 09:59:11"}
+{"level":"info","message":"📊 Environment: development","service":"csv-opener-backend","timestamp":"2025-09-21 09:59:11"}
+{"level":"info","message":"🔗 Redis URL: redis://localhost:6380","service":"csv-opener-backend","timestamp":"2025-09-21 09:59:11"}
+{"level":"info","message":"Redis connected successfully","service":"csv-opener-backend","timestamp":"2025-09-21 09:59:11"}
+{"level":"info","message":"Redis ping successful","service":"csv-opener-backend","timestamp":"2025-09-21 09:59:11"}
+{"level":"info","message":"Received shutdown signal, closing server gracefully...","service":"csv-opener-backend","timestamp":"2025-09-21 09:59:18"}
+{"level":"info","message":"HTTP server closed","service":"csv-opener-backend","timestamp":"2025-09-21 09:59:18"}
+{"level":"info","message":"🚀 Server running on port 3001","service":"csv-opener-backend","timestamp":"2025-09-21 10:00:52"}
+{"level":"info","message":"📊 Environment: development","service":"csv-opener-backend","timestamp":"2025-09-21 10:00:52"}
+{"level":"info","message":"🔗 Redis URL: redis://localhost:6380","service":"csv-opener-backend","timestamp":"2025-09-21 10:00:52"}
+{"level":"info","message":"Redis connected successfully","service":"csv-opener-backend","timestamp":"2025-09-21 10:00:52"}
+{"level":"info","message":"Redis ping successful","service":"csv-opener-backend","timestamp":"2025-09-21 10:00:52"}
+{"level":"info","message":"Received shutdown signal, closing server gracefully...","service":"csv-opener-backend","timestamp":"2025-09-21 10:00:59"}
+{"level":"info","message":"HTTP server closed","service":"csv-opener-backend","timestamp":"2025-09-21 10:00:59"}
+{"level":"info","message":"🚀 Server running on port 3001","service":"csv-opener-backend","timestamp":"2025-09-21 10:01:40"}
+{"level":"info","message":"📊 Environment: development","service":"csv-opener-backend","timestamp":"2025-09-21 10:01:40"}
+{"level":"info","message":"🔗 Redis URL: redis://localhost:6380","service":"csv-opener-backend","timestamp":"2025-09-21 10:01:40"}
+{"level":"info","message":"Redis connected successfully","service":"csv-opener-backend","timestamp":"2025-09-21 10:01:40"}
+{"level":"info","message":"Redis ping successful","service":"csv-opener-backend","timestamp":"2025-09-21 10:01:40"}
+{"level":"info","message":"Received shutdown signal, closing server gracefully...","service":"csv-opener-backend","timestamp":"2025-09-21 10:07:49"}
+{"level":"info","message":"HTTP server closed","service":"csv-opener-backend","timestamp":"2025-09-21 10:07:49"}
+{"level":"info","message":"🚀 Server running on port 3001","service":"csv-opener-backend","timestamp":"2025-09-21 10:15:47"}
+{"level":"info","message":"📊 Environment: development","service":"csv-opener-backend","timestamp":"2025-09-21 10:15:47"}
+{"level":"info","message":"🔗 Redis URL: redis://localhost:6380","service":"csv-opener-backend","timestamp":"2025-09-21 10:15:47"}
+{"level":"info","message":"Redis connected successfully","service":"csv-opener-backend","timestamp":"2025-09-21 10:15:47"}
+{"level":"info","message":"Redis ping successful","service":"csv-opener-backend","timestamp":"2025-09-21 10:15:47"}
+{"level":"info","message":"Received shutdown signal, closing server gracefully...","service":"csv-opener-backend","timestamp":"2025-09-21 10:31:02"}
+{"level":"info","message":"HTTP server closed","service":"csv-opener-backend","timestamp":"2025-09-21 10:31:02"}
+{"level":"info","message":"🚀 Server running on port 3001","service":"csv-opener-backend","timestamp":"2025-09-21 11:11:52"}
+{"level":"info","message":"📊 Environment: development","service":"csv-opener-backend","timestamp":"2025-09-21 11:11:52"}
+{"level":"info","message":"🔗 Redis URL: redis://localhost:6380","service":"csv-opener-backend","timestamp":"2025-09-21 11:11:52"}
+{"level":"info","message":"Redis connected successfully","service":"csv-opener-backend","timestamp":"2025-09-21 11:11:52"}
+{"level":"info","message":"Redis ping successful","service":"csv-opener-backend","timestamp":"2025-09-21 11:11:52"}
+{"level":"info","message":"Received shutdown signal, closing server gracefully...","service":"csv-opener-backend","timestamp":"2025-09-21 11:28:03"}
+{"level":"info","message":"HTTP server closed","service":"csv-opener-backend","timestamp":"2025-09-21 11:28:03"}
+{"level":"info","message":"🚀 Server running on port 3001","service":"csv-opener-backend","timestamp":"2025-09-21 11:28:08"}
+{"level":"info","message":"📊 Environment: development","service":"csv-opener-backend","timestamp":"2025-09-21 11:28:08"}
+{"level":"info","message":"🔗 Redis URL: redis://localhost:6380","service":"csv-opener-backend","timestamp":"2025-09-21 11:28:08"}
+{"level":"info","message":"Redis connected successfully","service":"csv-opener-backend","timestamp":"2025-09-21 11:28:08"}
+{"level":"info","message":"Redis ping successful","service":"csv-opener-backend","timestamp":"2025-09-21 11:28:08"}
+{"level":"info","message":"Received shutdown signal, closing server gracefully...","service":"csv-opener-backend","timestamp":"2025-09-21 11:36:45"}
+{"level":"info","message":"HTTP server closed","service":"csv-opener-backend","timestamp":"2025-09-21 11:36:45"}
+{"level":"info","message":"Redis connections closed","service":"csv-opener-backend","timestamp":"2025-09-21 11:36:45"}

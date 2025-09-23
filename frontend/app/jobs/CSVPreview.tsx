@@ -1,12 +1,18 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import React, { useState, useMemo } from 'react'
 import { 
   Card, 
   CardBody, 
   CardHeader,
   Button, 
-  Chip
+  Chip,
+  Table,
+  TableHeader,
+  TableColumn,
+  TableBody,
+  TableRow,
+  TableCell
 } from '@nextui-org/react'
 import { ArrowLeft, Play, Eye, EyeOff } from 'lucide-react'
 import { CSVRow, ContentType } from '@/types'
@@ -139,27 +145,22 @@ export function CSVPreview({
               </div>
 
               {/* Start Processing Button */}
-              <div className='relative'>
-              <div className="w-full lg:w-auto lg:flex-shrink-0">
-                <Button
-                  color="primary"
-                  size="lg"
-                  startContent={<Play className="w-5 h-5" />}
-                  onPress={handleStartProcessingClick}
-                  isDisabled={!canStartProcessing}
-                  className="border border-divider/50 rounded-bubbly font-medium shadow-bubbly hover:shadow-bubbly-lg transition-all duration-300 w-full lg:w-auto lg:min-w-[200px]"
-                  aria-label="Start processing CSV with OpenAI"
-                >
-                  Start Processing
-                </Button>
-                {!contentType && (
-                  <p className="px-4 py-3 text-xs text-warning-600 dark:text-warning-400 font-medium text-center lg:text-left mt-2">
-                    Please select content type first
-                  </p>
-                )}
+              {contentType && (
+                <div className="w-full lg:w-auto lg:flex-shrink-0">
+                  <Button
+                    color="primary"
+                    size="lg"
+                    startContent={<Play className="w-5 h-5" />}
+                    onPress={handleStartProcessingClick}
+                    isDisabled={!canStartProcessing}
+                    className="border border-divider/50 rounded-bubbly font-medium shadow-bubbly hover:shadow-bubbly-lg dark:shadow-bubbly-dark dark:hover:shadow-bubbly-lg-dark transition-all duration-300 w-full lg:w-auto lg:min-w-[200px]"
+                    aria-label="Start processing CSV with OpenAI"
+                  >
+                    Start Processing
+                  </Button>
+                </div>
+              )}
               </div>
-              </div>
-            </div>
           </div>
         </div>
       </Card>
@@ -187,34 +188,34 @@ export function CSVPreview({
         {/* Main Content Section */}
         <div className="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-full">
-              <thead className="bg-default-50/50">
-                <tr>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-foreground/70 uppercase tracking-wider sticky left-0 bg-default-50/50 z-10 min-w-[3rem]">#</th>
-                  {columns.map((column) => (
-                    <th key={column} className="px-3 py-3 text-left text-xs font-medium text-foreground/70 uppercase tracking-wider min-w-[8rem]">
-                      {column}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-divider/30">
+            <Table aria-label="CSV data preview table">
+              <TableHeader>
+                {[
+                  <TableColumn key="index">#</TableColumn>,
+                  ...columns.map((column) => (
+                    <TableColumn key={column}>{column}</TableColumn>
+                  ))
+                ]}
+              </TableHeader>
+              <TableBody>
                 {displayData.map((row, index) => (
-                  <tr key={index} className="hover:bg-default-50/30 transition-colors">
-                    <td className="px-3 py-3 font-medium text-foreground sticky left-0 bg-background z-10 min-w-[3rem]">
-                      {index + 1}
-                    </td>
-                    {columns.map((column) => (
-                      <td key={column} className="px-3 py-3 text-sm text-foreground min-w-[8rem]">
-                        <div className="max-w-xs sm:max-w-md lg:max-w-lg truncate" title={row[column]}>
-                          {row[column] || '-'}
-                        </div>
-                      </td>
-                    ))}
-                  </tr>
+                  <TableRow key={index}>
+                    {[
+                      <TableCell key="index">
+                        <span className="font-medium">{index + 1}</span>
+                      </TableCell>,
+                      ...columns.map((column) => (
+                        <TableCell key={column}>
+                          <div className="max-w-xs sm:max-w-md lg:max-w-lg truncate" title={row[column] as string}>
+                            {(row[column] as string) || '-'}
+                          </div>
+                        </TableCell>
+                      ))
+                    ]}
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
           
           {data.length > 10 && !showAllRows && (

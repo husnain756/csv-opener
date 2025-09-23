@@ -8,7 +8,6 @@ export const validateStartProcessing = (
 ): void => {
   const schema = Joi.object({
     jobId: Joi.string().uuid().required(),
-    urlColumn: Joi.string().min(1).required(),
     contentType: Joi.string().valid('company', 'person', 'news').required(),
     fileName: Joi.string().optional(),
   });

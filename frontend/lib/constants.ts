@@ -54,11 +54,11 @@ export const COST_ESTIMATES = {
 
 export const API_ENDPOINTS = {
   upload: '/api/upload',
-  process: '/api/process',
+  process: '/api/upload/process',
   jobs: (id: string) => `/api/jobs/${id}`,
-  download: (id: string) => `/api/jobs/${id}/download`,
+  download: (id: string) => `/api/upload/${id}/download`,
   retry: (id: string) => `/api/jobs/${id}/retry`,
-  cancel: (id: string) => `/api/jobs/${id}/cancel`,
+  cancel: (id: string) => `/api/upload/${id}/cancel`,
 } as const
 
 export const STORAGE_KEYS = {

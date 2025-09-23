@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import { Providers } from './providers'
+import { Header } from '@/components'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -26,7 +27,10 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
         <Providers>
-          {children}
+          <div className="min-h-screen gradient-bg">
+            <Header />
+            {children}
+          </div>
         </Providers>
       </body>
     </html>

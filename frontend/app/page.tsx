@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { 
   Card, 
   CardBody, 
@@ -8,12 +9,6 @@ import {
   Button,
   Progress,
   Chip,
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  useDisclosure,
   Table,
   TableHeader,
   TableColumn,
@@ -27,28 +22,25 @@ import {
 } from '@nextui-org/react'
 import { 
   Upload, 
-  FileText, 
+  FileText,
   Play, 
   Download, 
-  Settings, 
-  Moon, 
-  Sun,
   CheckCircle,
   XCircle,
   Clock,
   RefreshCw
 } from 'lucide-react'
 import { useTheme } from 'next-themes'
-import { useAppStore } from '@/lib/store/appStore'
-import { CSVUploader } from '@/components/CSVUploader'
-import { CSVPreview } from '@/components/CSVPreview'
-import { JobProgress } from '@/components/JobProgress'
-import { ThemeToggle } from '@/components/ThemeToggle'
-import { SettingsModal } from '@/components/SettingsModal'
+import { useAppStore } from '@/lib'
+import { jobService } from '@/services'
+import { CSVUploader } from './jobs/CSVUploader'
+import { CSVPreview } from './jobs/CSVPreview'
+import { JobProgress } from './jobs/JobProgress'
+import { CSVRow } from '@/types'
 
 export default function Home() {
   const { theme, setTheme } = useTheme()
-  const { isOpen: isSettingsOpen, onOpen: onSettingsOpen, onClose: onSettingsClose } = useDisclosure()
+  const router = useRouter()
   
   const {
     currentStep,
@@ -70,29 +62,42 @@ export default function Home() {
     resetApp
   } = useAppStore()
 
+  const [fileName, setFileName] = useState<string>('')
+
+  const handleCSVUpload = (data: CSVRow[], fileName: string) => {
+    setCsvData(data)
+    setFileName(fileName)
+    setCurrentStep('preview')
+  }
+
   const handleStartProcessing = async () => {
     console.log('Start processing clicked!', { csvData: csvData?.length, selectedColumn, contentType })
     
-    if (!csvData || !selectedColumn) {
-      console.log('Missing required data:', { csvData: !!csvData, selectedColumn })
+    if (!csvData || !contentType) {
+      console.log('Missing required data:', { csvData: !!csvData, contentType })
+      setError('Please select a content type and ensure CSV data is loaded')
       return
     }
     
     try {
       setError(null)
       setCurrentStep('processing')
-      setJobId('demo-job-123')
+      
+      // Step 1: Upload CSV file
+      const csvContent = generateCSVContent(csvData)
+      const blob = new Blob([csvContent], { type: 'text/csv' })
+      const file = new File([blob], 'uploaded.csv', { type: 'text/csv' })
+      
+      console.log('Uploading CSV file...')
+      const uploadResponse = await jobService.uploadAndProcessCSV(file, contentType)
+      
+      console.log('Upload successful:', uploadResponse)
+      
+      setJobId(uploadResponse.jobId)
       setJobStatus('processing')
       
-      // Simulate processing for demo
-      setTimeout(() => {
-        setJobStatus('completed')
-        setResults([
-          { rowId: '1', url: 'https://example.com', opener: 'Generated opener text', status: 'success' },
-          { rowId: '2', url: 'https://test.com', opener: 'Another generated opener', status: 'success' }
-        ])
-        setCurrentStep('results')
-      }, 3000)
+      // Redirect to job management page to see the job in the listing
+      router.push('/jobs')
       
     } catch (err) {
       console.error('Processing error:', err)
@@ -101,25 +106,56 @@ export default function Home() {
     }
   }
 
+  // Helper function to generate CSV content from data
+  const generateCSVContent = (data: any[]) => {
+    if (!data || data.length === 0) return ''
+    
+    const headers = Object.keys(data[0])
+    const csvRows = [
+      headers.join(','),
+      ...data.map(row => headers.map(header => `"${(row[header] || '').toString().replace(/"/g, '""')}"`).join(','))
+    ]
+    
+    return csvRows.join('\n')
+  }
+
   const pollJobStatus = async (id: string) => {
     const poll = async () => {
       try {
         const response = await fetch(`/api/jobs/${id}`)
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch job status: ${response.statusText}`)
+        }
+        
         const data = await response.json()
+        console.log('Job status update:', data)
         
         setJobStatus(data.status)
         
         if (data.status === 'completed') {
-          setResults(data.results)
+          // Fetch results when job is completed
+          const resultsResponse = await fetch(`/api/jobs/${id}/results`)
+          if (resultsResponse.ok) {
+            const resultsData = await resultsResponse.json()
+            setResults(resultsData.urls.map((url: any) => ({
+              rowId: url.url, // Using URL as rowId for now
+              url: url.url,
+              opener: url.opener || '',
+              status: url.status === 'completed' ? 'success' : 'failed',
+              error: url.error || ''
+            })))
+          }
           setCurrentStep('results')
         } else if (data.status === 'failed') {
           setError(data.error || 'Job failed')
           setCurrentStep('preview')
-        } else {
+        } else if (data.status === 'processing' || data.status === 'pending') {
           // Continue polling
           setTimeout(poll, 2000)
         }
       } catch (err) {
+        console.error('Polling error:', err)
         setError('Failed to check job status')
         setCurrentStep('preview')
       }
@@ -128,27 +164,27 @@ export default function Home() {
     poll()
   }
 
-  const handleDownloadResults = () => {
-    if (!results) return
+  const handleDownloadResults = async () => {
+    if (!jobId) return
     
-    const csvContent = [
-      ['Row ID', 'Original URL', 'Generated Opener', 'Status', 'Error'],
-      ...results.map((result: any) => [
-        result.rowId,
-        result.url,
-        result.opener || '',
-        result.status,
-        result.error || ''
-      ])
-    ].map(row => row.join(',')).join('\n')
-    
-    const blob = new Blob([csvContent], { type: 'text/csv' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `opener-results-${Date.now()}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
+    try {
+      const response = await fetch(`/api/upload/${jobId}/download`)
+      
+      if (!response.ok) {
+        throw new Error(`Download failed: ${response.statusText}`)
+      }
+      
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `opener-results-${jobId}.csv`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error('Download error:', err)
+      setError('Failed to download results')
+    }
   }
 
   const getStepIcon = (step: string) => {
@@ -171,35 +207,7 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen gradient-bg">
-      {/* Header */}
-      <header className="border-b border-divider/50 bg-background/95 backdrop-blur-md shadow-bubbly sticky top-0 z-50 glow-primary">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <div className="w-14 h-14 bg-gradient-to-br from-primary-500 to-primary-600 rounded-bubbly flex items-center justify-center shadow-bubbly">
-              <FileText className="w-7 h-7 text-white" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-foreground">CSV Opener</h1>
-              <p className="text-base text-foreground/70 font-medium mt-1">AI-powered CSV processing</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-4">
-            <Button
-              isIconOnly
-              variant="ghost"
-              onPress={onSettingsOpen}
-              className="hover:bg-secondary/50 rounded-bubbly w-10 h-10"
-              aria-label="Open settings"
-            >
-              <Settings className="w-5 h-5" />
-            </Button>
-            <ThemeToggle />
-          </div>
-        </div>
-      </header>
-
+    <div>
       {/* Main Content */}
       <main className="container mx-auto px-8 py-8">
         {/* Progress Steps */}
@@ -241,19 +249,16 @@ export default function Home() {
         {/* Step Content */}
         {currentStep === 'upload' && (
           <CSVUploader 
-            onUpload={(data) => {
-              setCsvData(data)
-              setCurrentStep('preview')
-            }}
+            onUpload={handleCSVUpload}
           />
         )}
 
         {currentStep === 'preview' && csvData && (
           <CSVPreview
             data={csvData}
-            selectedColumn={selectedColumn}
+            selectedColumn={null}
             contentType={contentType}
-            onColumnSelect={setSelectedColumn}
+            onColumnSelect={() => {}}
             onContentTypeSelect={setContentType}
             onStartProcessing={handleStartProcessing}
             onBack={() => setCurrentStep('upload')}
@@ -355,11 +360,6 @@ export default function Home() {
         )}
       </main>
 
-      {/* Settings Modal */}
-      <SettingsModal 
-        isOpen={isSettingsOpen}
-        onClose={onSettingsClose}
-      />
     </div>
   )
 }

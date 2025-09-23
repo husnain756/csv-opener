@@ -6,7 +6,8 @@ import { createServer } from 'http';
 import { config } from './config';
 import { logger } from './utils/logger';
 import { redis } from './services/redis';
-import { jobQueue } from './services/queue';
+import { csvProcessingQueue, csvProcessingWorker } from './services/queue';
+import { database } from './services/database';
 import { errorHandler } from './middleware/errorHandler';
 import { rateLimiter } from './middleware/rateLimiter';
 
@@ -31,8 +32,13 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Rate limiting
-app.use(rateLimiter);
+// Rate limiting (exclude jobs routes as they have their own polling rate limiter)
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api/jobs')) {
+    return next(); // Skip global rate limiter for jobs routes
+  }
+  return rateLimiter(req, res, next);
+});
 
 // Health check
 app.get('/health', (req, res) => {
@@ -63,9 +69,11 @@ const gracefulShutdown = async () => {
     logger.info('HTTP server closed');
     
     try {
-      await jobQueue.close();
+      await csvProcessingWorker.close();
+      await csvProcessingQueue.close();
+      await database.cleanup();
       await redis.quit();
-      logger.info('Redis connections closed');
+      logger.info('All connections closed');
       process.exit(0);
     } catch (error) {
       logger.error('Error during shutdown:', error);
@@ -79,10 +87,12 @@ process.on('SIGINT', gracefulShutdown);
 
 // Start server
 const PORT = config.port;
-server.listen(PORT, () => {
+server.listen(PORT, async () => {
   logger.info(`🚀 Server running on port ${PORT}`);
   logger.info(`📊 Environment: ${config.nodeEnv}`);
   logger.info(`🔗 Redis URL: ${config.redisUrl}`);
+  logger.info(`🗄️ Database URL: ${config.databaseUrl}`);
+  logger.info(`🤖 OpenAI Dummy Mode: ${process.env.OPENAI_DUMMY_MODE === 'true' || !process.env.OPENAI_API_KEY ? 'Enabled' : 'Disabled'}`);
 });
 
 export default app;

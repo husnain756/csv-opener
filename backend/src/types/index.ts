@@ -13,7 +13,6 @@ export interface CSVRow {
 export interface JobData {
   jobId: string;
   fileName: string;
-  urlColumn: string;
   contentType: 'company' | 'person' | 'news';
   totalRows: number;
   processedRows: number;

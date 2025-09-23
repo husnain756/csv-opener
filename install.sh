@@ -57,6 +57,25 @@ check_npm() {
     print_success "npm $(npm --version) is installed"
 }
 
+# Check if PostgreSQL is installed
+check_postgresql() {
+    if ! command -v psql &> /dev/null; then
+        print_warning "PostgreSQL client (psql) not found. Please install PostgreSQL first."
+        print_warning "Ubuntu/Debian: sudo apt-get install postgresql postgresql-contrib"
+        print_warning "CentOS/RHEL: sudo yum install postgresql postgresql-server"
+        print_warning "macOS: brew install postgresql"
+        return 1
+    fi
+    
+    if ! command -v createdb &> /dev/null; then
+        print_warning "PostgreSQL utilities not found. Please install postgresql-contrib package."
+        return 1
+    fi
+    
+    print_success "PostgreSQL client is installed"
+    return 0
+}
+
 # Check if Redis is running
 check_redis() {
     # First check if we have our local Redis installation
@@ -223,6 +242,40 @@ install_dependencies() {
     print_success "All dependencies installed successfully"
 }
 
+# Setup PostgreSQL database
+setup_database() {
+    print_status "Setting up PostgreSQL database..."
+    
+    # Check if database exists
+    if psql -lqt | cut -d \| -f 1 | grep -qw csv_opener; then
+        print_success "Database 'csv_opener' already exists"
+    else
+        print_status "Creating database 'csv_opener'..."
+        if createdb csv_opener; then
+            print_success "Database 'csv_opener' created successfully"
+        else
+            print_error "Failed to create database. Please check PostgreSQL is running and you have permissions."
+            print_warning "You can create the database manually: createdb csv_opener"
+            return 1
+        fi
+    fi
+    
+    # Run database setup script
+    print_status "Setting up database tables..."
+    cd backend
+    if npm run setup-db; then
+        print_success "Database tables created successfully"
+    else
+        print_error "Failed to setup database tables"
+        print_warning "You can run 'cd backend && npm run setup-db' manually"
+        cd ..
+        return 1
+    fi
+    cd ..
+    
+    return 0
+}
+
 # Setup environment files
 setup_environment() {
     print_status "Setting up environment files..."
@@ -240,6 +293,7 @@ setup_environment() {
         fi
         
         print_warning "Please edit backend/.env and add your OpenAI API key"
+        print_warning "For development, you can set OPENAI_DUMMY_MODE=true to avoid API costs"
     else
         # Update existing .env file to use local Redis if it exists
         if [ -f "$HOME/redis-local/bin/redis-server" ]; then
@@ -287,6 +341,7 @@ main() {
     print_status "Checking prerequisites..."
     check_node
     check_npm
+    check_postgresql
     
     # Check and install Redis if needed
     if ! check_redis; then
@@ -308,6 +363,15 @@ main() {
     
     echo
     
+    # Setup database
+    print_status "Setting up database..."
+    if ! setup_database; then
+        print_warning "Database setup failed, but continuing with installation..."
+        print_warning "You can run database setup manually later"
+    fi
+    
+    echo
+    
     # Build application
     print_status "Building application..."
     build_application
@@ -319,13 +383,18 @@ main() {
     echo
     echo "Next steps:"
     echo "1. Edit backend/.env and add your OpenAI API key"
-    echo "2. Redis is already running (Redis 7.2+ on port 6380)"
-    echo "3. Start the development servers:"
+    echo "2. Ensure PostgreSQL is running and database is set up"
+    echo "3. Redis is already running (Redis 7.2+ on port 6380)"
+    echo "4. Start the development servers:"
     echo "   npm run dev"
     echo
     echo "The app will be available at:"
     echo "  Frontend: http://localhost:3000"
     echo "  Backend:  http://localhost:3001"
+    echo
+    echo "Database Management:"
+    echo "  Database: csv_opener (PostgreSQL)"
+    echo "  Setup tables: cd backend && npm run setup-db"
     echo
     echo "Redis Management:"
     echo "  Start Redis: ~/redis-local/start-redis.sh"

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import React, { useState, useCallback } from 'react'
 import { 
   Card, 
   CardBody, 
@@ -49,7 +49,7 @@ function isValidUrl(url: string): boolean {
 }
 
 interface CSVUploaderProps {
-  onUpload: (data: CSVRow[]) => void
+  onUpload: (data: CSVRow[], fileName: string) => void
 }
 
 export function CSVUploader({ onUpload }: CSVUploaderProps) {
@@ -128,7 +128,7 @@ export function CSVUploader({ onUpload }: CSVUploaderProps) {
 
           setUploadProgress(100)
           setTimeout(() => {
-            onUpload(results.data as CSVRow[])
+            onUpload(results.data as CSVRow[], file.name)
             setIsUploading(false)
           }, 500)
         },
@@ -189,26 +189,36 @@ export function CSVUploader({ onUpload }: CSVUploaderProps) {
 
           {/* Upload Area */}
           <div
-            className={`border-2 border-dashed rounded-bubbly p-8 transition-all duration-300 ${
+            className={`border-2 border-dashed rounded-bubbly p-8 transition-all duration-300 flex justify-center ${
               isDragOver 
-                ? 'border-primary bg-primary/5 shadow-bubbly' 
-                : 'border-divider/50 hover:border-primary/50 hover:shadow-bubbly'
+                ? 'border-primary bg-primary/5 shadow-bubbly dark:shadow-bubbly-dark' 
+                : 'border-divider/50 hover:border-primary/50'
             }`}
             onDrop={handleDrop}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
+            role="button"
+            tabIndex={0}
+            aria-label="CSV file upload area. Drop your CSV file here or click to browse."
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                document.getElementById('file-input')?.click();
+              }
+            }}
           >
             {isUploading ? (
-              <div className="space-y-4">
+              <div className="space-y-4 text-center">
                 <Progress 
                   value={uploadProgress} 
                   className="max-w-md mx-auto"
                   color="primary"
+                  aria-label={`Upload progress: ${uploadProgress}%`}
                 />
                 <p className="text-sm text-default-500">Processing CSV...</p>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-4 text-center">
                 <Upload className="w-12 h-12 text-default-400 mx-auto" />
                 <div>
                   <p className="text-lg font-medium">Drop your CSV file here</p>
@@ -218,7 +228,7 @@ export function CSVUploader({ onUpload }: CSVUploaderProps) {
                   color="primary"
                   variant="bordered"
                   onPress={() => document.getElementById('file-input')?.click()}
-                  className="rounded-bubbly font-medium"
+                  className="border border-divider/50 rounded-bubbly font-medium shadow-bubbly hover:shadow-bubbly-lg dark:shadow-bubbly-dark dark:hover:shadow-bubbly-lg-dark transition-all duration-300 w-full lg:w-auto lg:min-w-[200px]"
                   aria-label="Choose CSV file to upload"
                 >
                   Choose File

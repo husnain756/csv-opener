@@ -379,6 +379,119 @@ button:has(svg),
   gap: 0.5rem !important;
 }
 
+/* Comprehensive NextUI Table header fixes for dark mode */
+.dark [data-slot="thead"] {
+  background-color: rgba(51, 65, 85, 0.8) !important;
+}
+
+.dark [data-slot="thead"] th {
+  color: #f1f5f9 !important;
+  font-weight: 600 !important;
+  background-color: rgba(51, 65, 85, 0.8) !important;
+}
+
+.dark [data-slot="thead"] th[data-slot="th"] {
+  color: #f1f5f9 !important;
+  font-weight: 600 !important;
+}
+
+/* NextUI Table component specific fixes */
+.dark .nextui-table-header {
+  background-color: rgba(51, 65, 85, 0.8) !important;
+}
+
+.dark .nextui-table-header th {
+  color: #f1f5f9 !important;
+  font-weight: 600 !important;
+}
+
+/* NextUI TableHeader component */
+.dark [data-slot="table-header"] {
+  background-color: rgba(51, 65, 85, 0.8) !important;
+}
+
+.dark [data-slot="table-header"] th {
+  color: #f1f5f9 !important;
+  font-weight: 600 !important;
+}
+
+/* NextUI TableColumn component */
+.dark [data-slot="table-column"] {
+  color: #f1f5f9 !important;
+  font-weight: 600 !important;
+  background-color: rgba(51, 65, 85, 0.8) !important;
+}
+
+/* NextUI Table wrapper */
+.dark .nextui-table {
+  background-color: transparent !important;
+}
+
+.dark .nextui-table thead {
+  background-color: rgba(51, 65, 85, 0.8) !important;
+}
+
+.dark .nextui-table thead th {
+  color: #f1f5f9 !important;
+  font-weight: 600 !important;
+  background-color: rgba(51, 65, 85, 0.8) !important;
+}
+
+/* Generic table header fixes */
+.dark thead {
+  background-color: rgba(51, 65, 85, 0.8) !important;
+}
+
+.dark thead th {
+  color: #f1f5f9 !important;
+  font-weight: 600 !important;
+  background-color: rgba(51, 65, 85, 0.8) !important;
+}
+
+/* Additional NextUI specific selectors */
+.dark [data-slot="base"] [data-slot="thead"] {
+  background-color: rgba(51, 65, 85, 0.8) !important;
+}
+
+.dark [data-slot="base"] [data-slot="thead"] th {
+  color: #f1f5f9 !important;
+  font-weight: 600 !important;
+  background-color: rgba(51, 65, 85, 0.8) !important;
+}
+
+/* NextUI Table component comprehensive fixes */
+.dark [data-slot="table"] [data-slot="thead"] {
+  background-color: rgba(51, 65, 85, 0.8) !important;
+}
+
+.dark [data-slot="table"] [data-slot="thead"] th {
+  color: #f1f5f9 !important;
+  font-weight: 600 !important;
+  background-color: rgba(51, 65, 85, 0.8) !important;
+}
+
+/* NextUI TableHeader and TableColumn specific fixes */
+.dark [data-slot="table-header"] {
+  background-color: rgba(51, 65, 85, 0.8) !important;
+}
+
+.dark [data-slot="table-column"] {
+  color: #f1f5f9 !important;
+  font-weight: 600 !important;
+  background-color: rgba(51, 65, 85, 0.8) !important;
+}
+
+/* Ensure all NextUI table elements are properly styled */
+.dark [data-slot="table"] thead {
+  background-color: rgba(51, 65, 85, 0.8) !important;
+}
+
+.dark [data-slot="table"] thead th {
+  color: #f1f5f9 !important;
+  font-weight: 600 !important;
+  background-color: rgba(51, 65, 85, 0.8) !important;
+}
+
 /* Standardize all buttons to match Start Processing button style */
 .nextui-button-base,
 button[data-slot="base"],

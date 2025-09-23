@@ -1,20 +1,8 @@
-export interface CSVRow {
-  [key: string]: string
-}
+// Re-export all types for convenience
+export * from './api'
+export * from './app'
 
-export interface JobResult {
-  rowId: string
-  url: string
-  opener?: string
-  status: 'success' | 'failed' | 'pending'
-  error?: string
-  retryCount?: number
-}
-
-export type ContentType = 'company' | 'linkedin' | 'news' | ''
-
-export type AppStep = 'upload' | 'preview' | 'processing' | 'results'
-
+// Legacy types for backward compatibility (to be removed gradually)
 export interface JobStatus {
   id: string
   status: 'pending' | 'processing' | 'completed' | 'failed'
@@ -24,7 +12,7 @@ export interface JobStatus {
     failed: number
     pending: number
   }
-  results: JobResult[]
+  results: any[]
   error?: string
   estimatedTimeRemaining?: number
   cost?: {
@@ -46,7 +34,7 @@ export interface ProcessingSettings {
 
 export interface UploadResponse {
   success: boolean
-  data?: CSVRow[]
+  data?: any[]
   error?: string
   validation?: {
     isValid: boolean
@@ -58,9 +46,9 @@ export interface UploadResponse {
 }
 
 export interface ProcessJobRequest {
-  csvData: CSVRow[]
+  csvData: any[]
   urlColumn: string
-  contentType: ContentType
+  contentType: string
   settings: Partial<ProcessingSettings>
 }
 

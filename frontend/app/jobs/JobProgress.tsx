@@ -197,6 +197,7 @@ export function JobProgress({ jobId, status, onCancel }: JobProgressProps) {
               value={progressPercentage} 
               color="primary"
               className="w-full"
+              aria-label={`Job processing progress: ${progressPercentage}%`}
             />
           </div>
 

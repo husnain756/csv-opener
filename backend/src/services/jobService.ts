@@ -85,7 +85,6 @@ export class JobService {
       const jobData: JobData = {
         jobId,
         fileName,
-        urlColumn,
         contentType,
         totalRows: rows.length,
         processedRows: 0,

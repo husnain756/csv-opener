@@ -2,17 +2,17 @@ import { Request, Response } from 'express';
 import multer from 'multer';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import { JobService } from '../services/jobService';
+import { database } from '../services/database';
 import { CSVService } from '../services/csvService';
+import { addChunkedJobs } from '../services/queue';
 import { ContentType } from '../types';
+import { logger } from '../utils/logger';
 
 export class UploadController {
-  private jobService: JobService;
   private csvService: CSVService;
   private upload: multer.Multer;
 
   constructor() {
-    this.jobService = new JobService();
     this.csvService = new CSVService();
 
     // Configure multer for file uploads
@@ -47,6 +47,57 @@ export class UploadController {
     return this.upload.single('csvFile');
   }
 
+  private detectUrlColumn(columns: string[], rows: any[]): string | null {
+    logger.info(`Detecting URL column from ${columns.length} columns: ${columns.join(', ')}`);
+    
+    // First, check for columns with URL-related names
+    let urlColumn = columns.find(column => 
+      column.toLowerCase().includes('url') || 
+      column.toLowerCase().includes('link') ||
+      column.toLowerCase().includes('website') ||
+      column.toLowerCase().includes('domain')
+    );
+
+    if (urlColumn) {
+      logger.info(`Found URL-named column: ${urlColumn}`);
+      return urlColumn;
+    }
+
+    // If no URL-named columns found, check all columns for URL content
+    for (const column of columns) {
+      const sampleValues = rows.slice(0, 5).map(row => row.originalData[column]).filter(Boolean);
+      logger.info(`Checking column '${column}' with sample values:`, sampleValues);
+      
+      const hasUrls = sampleValues.some(value => {
+        const isValid = this.isValidUrl(value);
+        logger.info(`Value '${value}' is valid URL: ${isValid}`);
+        return isValid;
+      });
+      
+      if (hasUrls) {
+        logger.info(`Found URL content in column: ${column}`);
+        return column;
+      }
+    }
+
+    logger.info('No URL column found');
+    return null;
+  }
+
+  private isValidUrl(url: string): boolean {
+    try {
+      // Add protocol if missing
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        url = 'https://' + url;
+      }
+      
+      new URL(url);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   async uploadCSV(req: Request, res: Response): Promise<void> {
     try {
       if (!req.file) {
@@ -61,8 +112,28 @@ export class UploadController {
       const { rows, columns } = await this.csvService.parseCSV(filePath);
       const preview = this.csvService.getPreview(rows, 10);
 
-      // Extract job ID from filename
-      const jobId = path.basename(filePath, path.extname(filePath));
+      // Create job in database
+      const jobId = await database.createJob(fileName, filePath, rows.length);
+
+      // Auto-detect URL column
+      const urlColumn = this.detectUrlColumn(columns, rows);
+      logger.info(`Detected URL column: ${urlColumn}`, { columns, sampleRows: rows.slice(0, 3) });
+      
+      if (!urlColumn) {
+        res.status(400).json({ 
+          error: 'No URL column found. Please ensure your CSV has a column containing URLs.' 
+        });
+        return;
+      }
+
+      // Extract URLs from the detected column
+      const urls = rows.map(row => (row as any).originalData[urlColumn] as string).filter(Boolean);
+      logger.info(`Extracted ${urls.length} URLs from column '${urlColumn}'`, { sampleUrls: urls.slice(0, 3) });
+      
+      // Create URL records in database
+      await database.createUrls(jobId, urls);
+
+      logger.info(`Created job ${jobId} with ${rows.length} rows`);
 
       res.json({
         jobId,
@@ -72,7 +143,7 @@ export class UploadController {
         columns,
       });
     } catch (error) {
-      console.error('Upload error:', error);
+      logger.error('Upload error:', error);
       res.status(500).json({
         error: 'Failed to process CSV file',
         details: error instanceof Error ? error.message : 'Unknown error',
@@ -82,11 +153,11 @@ export class UploadController {
 
   async startProcessing(req: Request, res: Response): Promise<void> {
     try {
-      const { jobId, urlColumn, contentType } = req.body;
+      const { jobId, contentType } = req.body;
 
-      if (!jobId || !urlColumn || !contentType) {
+      if (!jobId || !contentType) {
         res.status(400).json({
-          error: 'Missing required fields: jobId, urlColumn, contentType',
+          error: 'Missing required fields: jobId, contentType',
         });
         return;
       }
@@ -98,32 +169,34 @@ export class UploadController {
         return;
       }
 
-      const filePath = path.join(
-        process.env.UPLOAD_DIR || './uploads',
-        `${jobId}.csv`
-      );
-
-      // Check if file exists
-      const fs = require('fs');
-      if (!fs.existsSync(filePath)) {
-        res.status(404).json({ error: 'CSV file not found' });
+      // Check if job exists
+      const job = await database.getJob(jobId);
+      if (!job) {
+        res.status(404).json({ error: 'Job not found' });
         return;
       }
 
-      // Create processing job
-      const newJobId = await this.jobService.createJob(
-        req.body.fileName || 'uploaded.csv',
-        filePath,
-        urlColumn,
-        contentType as ContentType
-      );
+      // Get URLs for this job
+      const urls = await database.getUrlsByJob(jobId);
+      const urlRecords = urls.map(url => ({
+        id: url.id,
+        url: url.url
+      }));
+
+      // Update job status to processing
+      await database.updateJobStatus(jobId, 'processing');
+
+      // Add chunked jobs to the queue
+      await addChunkedJobs(jobId, urlRecords, contentType as ContentType);
+
+      logger.info(`Started processing job ${jobId} with ${urlRecords.length} URLs`);
 
       res.json({
-        jobId: newJobId,
+        jobId,
         message: 'Processing started',
       });
     } catch (error) {
-      console.error('Start processing error:', error);
+      logger.error('Start processing error:', error);
       res.status(500).json({
         error: 'Failed to start processing',
         details: error instanceof Error ? error.message : 'Unknown error',
@@ -134,25 +207,28 @@ export class UploadController {
   async getJobStatus(req: Request, res: Response): Promise<void> {
     try {
       const { jobId } = req.params;
-      const jobData = this.jobService.getJobStatus(jobId);
+      const job = await database.getJob(jobId);
 
-      if (!jobData) {
+      if (!job) {
         res.status(404).json({ error: 'Job not found' });
         return;
       }
 
-      const progress = await this.jobService.getJobProgress(jobId);
+      const progress = await database.getJobProgress(jobId);
 
       res.json({
-        jobId: jobData.jobId,
-        status: jobData.status,
+        jobId: job.id,
+        status: job.status,
         progress,
-        createdAt: jobData.createdAt,
-        updatedAt: jobData.updatedAt,
-        error: jobData.error,
+        createdAt: job.created_at,
+        updatedAt: job.updated_at,
+        fileName: job.file_name,
+        totalRows: job.total_rows,
+        processedRows: job.processed_rows,
+        failedRows: job.failed_rows,
       });
     } catch (error) {
-      console.error('Get job status error:', error);
+      logger.error('Get job status error:', error);
       res.status(500).json({
         error: 'Failed to get job status',
         details: error instanceof Error ? error.message : 'Unknown error',
@@ -163,32 +239,30 @@ export class UploadController {
   async downloadResults(req: Request, res: Response): Promise<void> {
     try {
       const { jobId } = req.params;
-      const jobData = this.jobService.getJobStatus(jobId);
+      const job = await database.getJob(jobId);
 
-      if (!jobData) {
+      if (!job) {
         res.status(404).json({ error: 'Job not found' });
         return;
       }
 
-      if (jobData.status !== 'completed') {
+      if (job.status !== 'completed') {
         res.status(400).json({ error: 'Job is not completed yet' });
         return;
       }
 
-      const outputPath = path.join(
-        process.env.OUTPUT_DIR || './outputs',
-        `${jobId}_results.csv`
-      );
-
-      const fs = require('fs');
-      if (!fs.existsSync(outputPath)) {
-        res.status(404).json({ error: 'Results file not found' });
-        return;
-      }
-
-      res.download(outputPath, `${jobData.fileName}_results.csv`);
+      // Get results from database
+      const results = await database.getJobResults(jobId);
+      
+      // Generate CSV content
+      const csvContent = this.generateResultsCSV(results.urls);
+      
+      // Set headers for CSV download
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="${job.file_name}_results.csv"`);
+      res.send(csvContent);
     } catch (error) {
-      console.error('Download results error:', error);
+      logger.error('Download results error:', error);
       res.status(500).json({
         error: 'Failed to download results',
         details: error instanceof Error ? error.message : 'Unknown error',
@@ -196,21 +270,71 @@ export class UploadController {
     }
   }
 
+  private generateResultsCSV(urls: Array<{ url: string; status: string; opener?: string; error?: string }>): string {
+    const headers = ['URL', 'Status', 'Opener', 'Error'];
+    const rows = urls.map(url => [
+      url.url,
+      url.status,
+      url.opener || '',
+      url.error || ''
+    ]);
+
+    const csvContent = [headers, ...rows]
+      .map(row => row.map(field => `"${field.replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+
+    return csvContent;
+  }
+
   async cancelJob(req: Request, res: Response): Promise<void> {
     try {
       const { jobId } = req.params;
-      const success = await this.jobService.cancelJob(jobId);
+      const job = await database.getJob(jobId);
 
-      if (!success) {
-        res.status(404).json({ error: 'Job not found or could not be cancelled' });
+      if (!job) {
+        res.status(404).json({ error: 'Job not found' });
         return;
       }
 
+      // Update job status to canceled
+      await database.updateJobStatus(jobId, 'canceled');
+
+      logger.info(`Job ${jobId} cancelled successfully`);
+
       res.json({ message: 'Job cancelled successfully' });
     } catch (error) {
-      console.error('Cancel job error:', error);
+      logger.error('Cancel job error:', error);
       res.status(500).json({
         error: 'Failed to cancel job',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+
+  async retryFailedUrls(req: Request, res: Response): Promise<void> {
+    try {
+      const { jobId } = req.params;
+      const job = await database.getJob(jobId);
+
+      if (!job) {
+        res.status(404).json({ error: 'Job not found' });
+        return;
+      }
+
+      // Retry failed URLs
+      const retriedCount = await database.retryFailedUrls(jobId);
+
+      logger.info(`Retried ${retriedCount} failed URLs for job ${jobId}`);
+
+      res.json({ 
+        message: 'Failed URLs retried successfully',
+        retried: retriedCount,
+        jobId 
+      });
+    } catch (error) {
+      logger.error('Retry failed URLs error:', error);
+      res.status(500).json({
+        error: 'Failed to retry failed URLs',
         details: error instanceof Error ? error.message : 'Unknown error',
       });
     }

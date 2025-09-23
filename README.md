@@ -44,14 +44,15 @@ csv-opener/
 2. **Set up environment variables:**
    ```bash
    cp backend/env.example backend/.env
-   # Edit backend/.env with your OpenAI API key and Redis URL
+   # Edit backend/.env with your OpenAI API key, Redis URL, and Database URL
    ```
 
-3. **Redis is automatically installed and configured:**
+3. **Prerequisites are automatically handled:**
    ```bash
+   # PostgreSQL: Database 'csv_opener' is created automatically
    # Redis 7.2+ is automatically installed from source during setup
-   # No additional Redis installation needed!
-   # Runs on port 6380 (instead of default 6379)
+   # No additional installation needed!
+   # Redis runs on port 6380 (instead of default 6379)
    ```
 
 4. **Start development servers:**
@@ -68,15 +69,42 @@ csv-opener/
 Create `backend/.env` with the following variables:
 
 ```env
+# OpenAI Configuration
 OPENAI_API_KEY=your_openai_api_key_here
+OPENAI_DUMMY_MODE=false
+
+# Database Configuration
+DATABASE_URL=postgresql://localhost:5432/csv_opener
+
+# Redis Configuration
 REDIS_URL=redis://localhost:6380
+
+# Server Configuration
 PORT=3001
 NODE_ENV=development
+
+# File Upload Configuration
 MAX_FILE_SIZE=10485760
+UPLOAD_DIR=./uploads
+OUTPUT_DIR=./outputs
+
+# Job Queue Configuration
 MAX_CONCURRENT_JOBS=10
+JOB_TIMEOUT=300000
+
+# OpenAI Model Configuration
 OPENAI_MODEL=gpt-3.5-turbo
 OPENAI_TEMPERATURE=0.7
 OPENAI_MAX_TOKENS=100
+
+# Rate Limiting
+RATE_LIMIT_REQUESTS_PER_MINUTE=60
+RATE_LIMIT_BURST=10
+
+# Retry Configuration
+MAX_RETRIES=3
+RETRY_DELAY=1000
+BACKOFF_MULTIPLIER=2
 ```
 
 ## Usage
@@ -90,11 +118,14 @@ OPENAI_MAX_TOKENS=100
 
 ## API Endpoints
 
-- `POST /api/upload` - Upload and preview CSV
-- `POST /api/process` - Start processing job
+- `POST /api/upload` - Upload CSV file
+- `POST /api/upload/process` - Start processing job
 - `GET /api/jobs/:id` - Get job status and progress
-- `GET /api/jobs/:id/download` - Download results CSV
-- `POST /api/jobs/:id/retry` - Retry failed rows
+- `GET /api/jobs/:id/results` - Get processed results
+- `POST /api/jobs/:id/retry` - Retry failed URLs
+- `GET /api/upload/:jobId/download` - Download results CSV
+- `POST /api/upload/:jobId/cancel` - Cancel job
+- `GET /health` - Health check endpoint
 
 ## Technology Stack
 
@@ -110,9 +141,10 @@ OPENAI_MAX_TOKENS=100
 ### Backend
 - **Node.js** with Express.js
 - **TypeScript** for type safety
-- **BullMQ** for job queue management
+- **PostgreSQL** for data persistence (jobs and URLs tracking)
+- **BullMQ** for job queue management with chunked processing
 - **Redis** for queue storage and caching
-- **OpenAI API** integration with retry logic
+- **OpenAI API** integration with retry logic and dummy mode
 - **Multer** for file uploads
 - **Winston** for logging
 - **Joi** for validation
@@ -125,6 +157,45 @@ OPENAI_MAX_TOKENS=100
 - 📱 **Responsive design** for all devices
 - ⚡ **Concurrent processing** with configurable limits
 - 🛡️ **Error handling** with detailed feedback
+- 🗄️ **Database persistence** with PostgreSQL for job tracking
+- 📦 **Chunked processing** for handling large CSV files (50K+ rows)
+- 🔄 **Individual URL retry** capability
+- 🤖 **Dummy mode** for development without OpenAI costs
+
+## Backend Implementation
+
+### Database Schema
+The backend uses PostgreSQL with two main tables:
+
+**Jobs Table:**
+- Tracks overall job status and progress
+- Stores file metadata and processing statistics
+- Provides real-time progress updates
+
+**URLs Table:**
+- Individual URL tracking with status and results
+- Stores generated openers and error messages
+- Enables individual URL retry functionality
+
+### Processing Flow
+1. **Upload** → CSV file saved, job created in database
+2. **Processing** → URLs extracted and chunked into BullMQ jobs (500 URLs per chunk)
+3. **Worker Processing** → Chunks processed with OpenAI API calls
+4. **Progress Tracking** → Real-time database updates
+5. **Completion** → Results available for download
+
+### Chunked Processing
+- Handles up to 50K+ rows efficiently
+- Configurable batch sizes (default: 500 URLs per chunk)
+- Parallel processing with BullMQ workers
+- Individual URL retry capability
+
+### Dummy Mode
+For local development without OpenAI API costs:
+```env
+OPENAI_DUMMY_MODE=true
+```
+This generates realistic dummy openers with 2-3 second delays.
 
 ## Redis Management
 

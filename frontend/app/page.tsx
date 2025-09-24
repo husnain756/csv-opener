@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, useCallback } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { 
   Card, 
   CardBody, 
@@ -35,12 +35,12 @@ import { useAppStore } from '@/lib'
 import { jobService } from '@/services'
 import { CSVUploader } from './jobs/CSVUploader'
 import { CSVPreview } from './jobs/CSVPreview'
-import { JobProgress } from './jobs/JobProgress'
 import { CSVRow } from '@/types'
 
 export default function Home() {
   const { theme, setTheme } = useTheme()
   const router = useRouter()
+  const searchParams = useSearchParams()
   
   const {
     currentStep,
@@ -62,6 +62,14 @@ export default function Home() {
     resetApp
   } = useAppStore()
 
+  // Handle URL parameters for navigation
+  useEffect(() => {
+    const step = searchParams.get('step')
+    if (step === 'preview' && csvData && csvData.length > 0) {
+      setCurrentStep('preview')
+    }
+  }, [searchParams, csvData, setCurrentStep])
+
   const [fileName, setFileName] = useState<string>('')
 
   const handleCSVUpload = (data: CSVRow[], fileName: string) => {
@@ -81,7 +89,7 @@ export default function Home() {
     
     try {
       setError(null)
-      setCurrentStep('processing')
+      // Skip the processing step and go directly to jobs page
       
       // Step 1: Upload CSV file
       const csvContent = generateCSVContent(csvData)
@@ -96,8 +104,8 @@ export default function Home() {
       setJobId(uploadResponse.jobId)
       setJobStatus('processing')
       
-      // Redirect to job management page to see the job in the listing
-      router.push('/jobs')
+      // Redirect directly to job management page with a parameter to indicate we should go back to preview
+      router.push('/jobs?from=preview')
       
     } catch (err) {
       console.error('Processing error:', err)
@@ -119,50 +127,83 @@ export default function Home() {
     return csvRows.join('\n')
   }
 
-  const pollJobStatus = async (id: string) => {
-    const poll = async () => {
+  // Use SSE for real-time job progress
+  // Simple polling for job status on home page
+  const [jobProgress, setJobProgress] = useState<any>(null)
+  const [isConnected, setIsConnected] = useState(false)
+  const [sseError, setSseError] = useState<string | null>(null)
+
+  // Handle job completion
+  const fetchResults = useCallback(async () => {
+    if (!jobId) return
+    
+    try {
+      const resultsResponse = await fetch(`/api/jobs/${jobId}/results`)
+      if (resultsResponse.ok) {
+        const resultsData = await resultsResponse.json()
+        setResults(resultsData.urls.map((url: any) => ({
+          rowId: url.url, // Using URL as rowId for now
+          url: url.url,
+          opener: url.opener || '',
+          status: url.status === 'completed' ? 'success' : 'failed',
+          error: url.error || ''
+        })))
+      }
+      setCurrentStep('results')
+    } catch (err) {
+      console.error('Error fetching results:', err)
+      setError('Failed to fetch results')
+    }
+  }, [jobId])
+
+  // Simple polling for job progress
+  useEffect(() => {
+    if (!jobId || currentStep !== 'processing') return
+
+    const pollJobStatus = async () => {
       try {
-        const response = await fetch(`/api/jobs/${id}`)
-        
-        if (!response.ok) {
-          throw new Error(`Failed to fetch job status: ${response.statusText}`)
-        }
-        
-        const data = await response.json()
-        console.log('Job status update:', data)
-        
-        setJobStatus(data.status)
-        
-        if (data.status === 'completed') {
-          // Fetch results when job is completed
-          const resultsResponse = await fetch(`/api/jobs/${id}/results`)
-          if (resultsResponse.ok) {
-            const resultsData = await resultsResponse.json()
-            setResults(resultsData.urls.map((url: any) => ({
-              rowId: url.url, // Using URL as rowId for now
-              url: url.url,
-              opener: url.opener || '',
-              status: url.status === 'completed' ? 'success' : 'failed',
-              error: url.error || ''
-            })))
+        const response = await fetch(`/api/jobs/${jobId}/status`)
+        if (response.ok) {
+          const data = await response.json()
+          setJobProgress(data)
+          setJobStatus(data.status)
+          setIsConnected(true)
+          setSseError(null)
+          
+          if (data.status === 'completed') {
+            fetchResults()
           }
-          setCurrentStep('results')
-        } else if (data.status === 'failed') {
-          setError(data.error || 'Job failed')
-          setCurrentStep('preview')
-        } else if (data.status === 'processing' || data.status === 'pending') {
-          // Continue polling
-          setTimeout(poll, 2000)
         }
       } catch (err) {
-        console.error('Polling error:', err)
-        setError('Failed to check job status')
-        setCurrentStep('preview')
+        console.error('Error polling job status:', err)
+        setSseError('Failed to get job status')
+        setIsConnected(false)
       }
     }
-    
-    poll()
-  }
+
+    // Poll every 2 seconds
+    const interval = setInterval(pollJobStatus, 2000)
+    pollJobStatus() // Initial call
+
+    return () => clearInterval(interval)
+  }, [jobId, currentStep, fetchResults])
+
+  useEffect(() => {
+    if (jobProgress?.status === 'completed') {
+      fetchResults()
+    } else if (jobProgress?.status === 'failed') {
+      setError(jobProgress.error || 'Job failed')
+      setCurrentStep('preview')
+    }
+  }, [jobProgress?.status, jobProgress?.error, fetchResults])
+
+  // Handle SSE errors
+  useEffect(() => {
+    if (sseError) {
+      setError(sseError)
+      setCurrentStep('preview')
+    }
+  }, [sseError])
 
   const handleDownloadResults = async () => {
     if (!jobId) return
@@ -266,14 +307,52 @@ export default function Home() {
         )}
 
         {currentStep === 'processing' && (
-          <JobProgress 
-            jobId={jobId}
-            status={jobStatus}
-            onCancel={() => {
-              setCurrentStep('preview')
-              setJobId(null)
-            }}
-          />
+          <Card className="card-bubbly">
+            <CardHeader className="card-header-shadow">
+              <div className="flex items-center justify-between w-full">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-primary-100 to-primary-200 dark:from-primary-900/30 dark:to-primary-800/30 rounded-bubbly flex items-center justify-center shadow-bubbly">
+                    <RefreshCw className="w-5 h-5 text-primary-600 dark:text-primary-400 animate-spin" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold">Processing CSV</h3>
+                    <p className="text-sm text-default-500">Generating outreach openers...</p>
+                  </div>
+                </div>
+                <Button
+                  color="danger"
+                  variant="bordered"
+                  onPress={() => {
+                    setCurrentStep('preview')
+                    setJobId(null)
+                  }}
+                  className="rounded-bubbly"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </CardHeader>
+            <CardBody className="p-6">
+              <div className="space-y-4">
+                <div className="text-center">
+                  <p className="text-sm text-default-600 mb-2">
+                    Processing your CSV file with AI-powered outreach openers
+                  </p>
+                  <Progress
+                    value={jobProgress ? (jobProgress.progress?.completed / jobProgress.progress?.total) * 100 : 0}
+                    color="primary"
+                    size="lg"
+                    className="max-w-md mx-auto"
+                  />
+                  {jobProgress && (
+                    <p className="text-xs text-default-500 mt-2">
+                      {jobProgress.progress?.completed || 0} / {jobProgress.progress?.total || 0} URLs processed
+                    </p>
+                  )}
+                </div>
+              </div>
+            </CardBody>
+          </Card>
         )}
 
         {currentStep === 'results' && results && (

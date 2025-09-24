@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { 
   Card, 
   CardBody, 
@@ -14,7 +15,6 @@ import {
   TableCell,
   Chip,
   Progress,
-  Link,
   Spinner,
   Modal,
   ModalContent,
@@ -25,17 +25,18 @@ import {
 } from '@nextui-org/react'
 import { 
   Download, 
-  Eye, 
   RefreshCw, 
   Clock,
   CheckCircle,
   XCircle,
   AlertCircle,
   Play,
-  ArrowLeft
+  ArrowLeft,
+  Eye
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { jobService } from '@/services'
+import { useJobManagementSSE } from '@/hooks'
 
 interface Job {
   id: string
@@ -51,73 +52,54 @@ interface Job {
 
 export default function JobsPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [jobs, setJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const { isOpen: isRetryModalOpen, onOpen: onRetryModalOpen, onClose: onRetryModalClose } = useDisclosure()
   const [selectedJob, setSelectedJob] = useState<Job | null>(null)
-  const [rateLimited, setRateLimited] = useState(false)
-  const [pollingInterval, setPollingInterval] = useState(15000) // Start with 15 seconds
+
+  // Get job IDs for SSE connections (memoized to prevent unnecessary re-renders)
+  const jobIds = useMemo(() => jobs.map(job => job.id), [jobs])
+  
+  // Use SSE for real-time updates
+  const { jobProgress, isConnected, error: sseError } = useJobManagementSSE(jobIds)
 
   useEffect(() => {
     fetchJobs()
-    
-    // Intelligent polling that adapts based on rate limiting and job status
-    const interval = setInterval(() => {
-      // Don't poll if rate limited
-      if (rateLimited) {
-        console.log('Skipping poll due to rate limiting')
-        return
-      }
-      
-      fetchJobs()
-    }, pollingInterval)
-    
-    return () => clearInterval(interval)
-  }, [rateLimited, pollingInterval]) // Removed 'jobs' from dependencies
+  }, [])
 
-  // Separate effect to check if all jobs are completed and stop polling
+  // Update jobs with real-time SSE data
   useEffect(() => {
-    const allJobsCompleted = jobs.every(job => 
-      ['completed', 'failed', 'cancelled'].includes(job.status)
-    )
-    
-    if (allJobsCompleted && jobs.length > 0) {
-      console.log('All jobs completed, stopping polling')
-      // You could set a flag here to stop polling, but for now we'll let it continue
-      // with a longer interval to catch any new jobs
+    if (Object.keys(jobProgress).length > 0) {
+      setJobs(prevJobs => 
+        prevJobs.map(job => {
+          const progress = jobProgress[job.id]
+          if (progress) {
+            return {
+              ...job,
+              status: progress.status,
+              processed_rows: progress.progress.completed,
+              failed_rows: progress.progress.failed,
+              progress: `${progress.progress.completed}/${progress.progress.total}`
+            }
+          }
+          return job
+        })
+      )
     }
-  }, [jobs])
+  }, [jobProgress])
 
   const fetchJobs = async () => {
     try {
-      setRateLimited(false)
       const data = await jobService.getAllJobs()
       console.log('Fetched jobs data:', data) // Debug log
       setJobs(data)
       setError(null)
-      
-      // Reset polling interval on successful fetch
-      if (pollingInterval > 15000) {
-        setPollingInterval(15000)
-      }
     } catch (err) {
       console.error('Error fetching jobs:', err) // Debug log
       
-      if (err instanceof Error && err.message.includes('Rate limited')) {
-        setRateLimited(true)
-        // Exponential backoff: increase polling interval
-        setPollingInterval(prev => Math.min(prev * 2, 60000)) // Max 60 seconds
-        setError('Rate limited - updates will resume automatically')
-        
-        // Auto-resume after 30 seconds
-        setTimeout(() => {
-          setRateLimited(false)
-          setError(null)
-        }, 30000)
-      } else {
-        setError(err instanceof Error ? err.message : 'Unknown error')
-      }
+      setError(err instanceof Error ? err.message : 'Unknown error')
     } finally {
       setLoading(false)
     }
@@ -125,12 +107,12 @@ export default function JobsPage() {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'pending': return <Clock className="w-4 h-4" />
-      case 'processing': return <RefreshCw className="w-4 h-4 animate-spin" />
-      case 'completed': return <CheckCircle className="w-4 h-4" />
-      case 'failed': return <XCircle className="w-4 h-4" />
-      case 'cancelled': return <AlertCircle className="w-4 h-4" />
-      default: return <Clock className="w-4 h-4" />
+      case 'pending': return <Clock className="w-4 h-4 text-default-500" />
+      case 'processing': return <RefreshCw className="w-4 h-4 animate-spin text-primary-600" />
+      case 'completed': return <CheckCircle className="w-4 h-4 text-success" />
+      case 'failed': return <XCircle className="w-4 h-4 text-danger" />
+      case 'cancelled': return <AlertCircle className="w-4 h-4 text-warning" />
+      default: return <Clock className="w-4 h-4 text-default-500" />
     }
   }
 
@@ -160,9 +142,7 @@ export default function JobsPage() {
     }
   }
 
-  const handleViewDetails = (job: Job) => {
-    router.push(`/jobs/${job.id}`)
-  }
+  // Remove individual job page - no longer needed
 
   const handleDownloadResults = async (job: Job) => {
     try {
@@ -200,9 +180,18 @@ export default function JobsPage() {
             <Button
               isIconOnly
               variant="ghost"
-              onPress={() => router.push('/')}
+              onPress={() => {
+                const from = searchParams.get('from')
+                if (from === 'preview') {
+                  // Go back to preview step on main page
+                  router.push('/?step=preview')
+                } else {
+                  // Default behavior - go to home page
+                  router.push('/')
+                }
+              }}
               className="hover:bg-secondary/50 rounded-bubbly"
-              aria-label="Go back to home page"
+              aria-label="Go back to previous page"
             >
               <ArrowLeft className="w-5 h-5" />
             </Button>
@@ -225,23 +214,44 @@ export default function JobsPage() {
           </Card>
         )}
 
-        {/* Rate Limit Warning */}
-        {rateLimited && (
-          <Card className="mb-8 border-warning/50 card-bubbly">
-            <CardBody className="p-4">
-              <div className="flex items-center gap-3 text-warning">
-                <AlertCircle className="w-5 h-5" />
-                <span className="font-medium">Rate limited - Updates will resume automatically in 30 seconds</span>
-              </div>
-            </CardBody>
-          </Card>
-        )}
 
         {/* Jobs Table */}
         <Card className="card-bubbly">
           <CardHeader className="card-header-shadow">
             <div className="flex items-center justify-between w-full p-4">
-              <h2 className="text-xl font-semibold">All Jobs</h2>
+              <div className="flex items-center gap-3">
+                <h2 className="text-xl font-semibold">All Jobs</h2>
+                {isConnected && (
+                  <Chip
+                    size="sm"
+                    color="success"
+                    variant="flat"
+                    startContent={<div className="w-2 h-2 bg-success rounded-full animate-pulse" />}
+                  >
+                    Live Updates
+                  </Chip>
+                )}
+                {sseError && (
+                  <Chip
+                    size="sm"
+                    color="danger"
+                    variant="flat"
+                    startContent={<XCircle className="w-3 h-3" />}
+                  >
+                    Connection Error
+                  </Chip>
+                )}
+                {!isConnected && !sseError && jobIds.length > 0 && (
+                  <Chip
+                    size="sm"
+                    color="default"
+                    variant="flat"
+                    startContent={<div className="w-2 h-2 bg-default rounded-full" />}
+                  >
+                    Connecting...
+                  </Chip>
+                )}
+              </div>
               <Button
                 color="primary"
                 variant="bordered"
@@ -268,18 +278,31 @@ export default function JobsPage() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <Table aria-label="Jobs table">
+                <Table 
+                  aria-label="Jobs table"
+                  classNames={{
+                    wrapper: "",
+                    table: "",
+                    thead: "bg-default-100 dark:bg-default-800",
+                    tbody: "divide-y divide-default-100 dark:divide-default-800",
+                    tr: "hover:bg-default-100 dark:hover:bg-default-700 transition-colors duration-200",
+                    th: "bg-default-100 dark:bg-default-800 text-default-700 dark:text-default-100 font-semibold py-2",
+                    td: "py-2 text-default-900 dark:text-default-100"
+                  }}
+                >
                   <TableHeader>
                     <TableColumn>FILE NAME</TableColumn>
                     <TableColumn>STATUS</TableColumn>
-                    <TableColumn>TOTAL ROWS</TableColumn>
                     <TableColumn>PROGRESS</TableColumn>
                     <TableColumn>LAST UPDATED</TableColumn>
                     <TableColumn>ACTIONS</TableColumn>
                   </TableHeader>
                   <TableBody>
                     {jobs.map((job) => (
-                      <TableRow key={job.id}>
+                      <TableRow 
+                        key={job.id}
+                        className="hover:bg-default-100 dark:hover:bg-default-700 transition-colors duration-200"
+                      >
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <span className="font-medium">{job.file_name}</span>
@@ -298,26 +321,37 @@ export default function JobsPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Chip
-                            color={getStatusColor(job.status)}
-                            size="sm"
-                            startContent={getStatusIcon(job.status)}
-                          >
+                          <div className="flex items-center gap-2">
+                            {getStatusIcon(job.status)}
                             {job.status}
-                          </Chip>
+                          </div>
                         </TableCell>
-                        <TableCell>{job.total_rows}</TableCell>
                         <TableCell>
-                          <div className="space-y-1">
-                            <Progress 
-                              value={progressPercentage(job)} 
-                              color="primary"
-                              size="sm"
-                              aria-label={`Progress: ${progressPercentage(job)}%`}
-                            />
-                            <div className="text-xs text-default-500">
-                              {job.processed_rows}/{job.total_rows} processed
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium">
+                                {job.processed_rows}/{job.total_rows} processed
+                              </span>
                             </div>
+                            {job.status !== 'completed' && (
+                              <div className="relative mt-2">
+                                <div className="w-full bg-gradient-to-br from-primary-100 to-primary-300 dark:from-primary-900/30 dark:to-primary-600/30 rounded-bubbly h-3 shadow-bubbly">
+                                  <div 
+                                    className={`h-3 rounded-bubbly transition-all duration-500 ${
+                                      job.status === 'processing' ? 'bg-gradient-to-r from-primary-200 to-primary-600 shadow-lg shadow-primary-500/50' : 
+                                      'bg-gradient-to-r from-gray-200 to-gray-500'
+                                    }`}
+                                    style={{ width: `${progressPercentage(job)}%` }}
+                                  ></div>
+                                </div>
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <span className="text-xs font-medium text-primary-600 drop-shadow-sm">
+                                    {progressPercentage(job)}%
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+                            {/* Debug: Job status is {job.status} */}
                           </div>
                         </TableCell>
                         <TableCell>
@@ -331,7 +365,7 @@ export default function JobsPage() {
                               size="sm"
                               variant="ghost"
                               startContent={<Eye className="w-4 h-4" />}
-                              onPress={() => handleViewDetails(job)}
+                              onPress={() => router.push(`/jobs/${job.id}`)}
                               className="hover:bg-secondary/50 rounded-bubbly"
                               aria-label={`View details for ${job.file_name}`}
                             >

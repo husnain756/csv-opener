@@ -151,7 +151,7 @@ BACKOFF_MULTIPLIER=2
 
 ### Key Features
 - 🎨 **Beautiful UI** with dark/light themes (golden/green colors)
-- 📊 **Real-time progress** tracking with WebSocket-like polling
+- 📊 **Real-time progress** tracking with Server-Sent Events
 - 🔄 **Automatic retry** logic for failed requests
 - 💰 **Cost tracking** and estimation
 - 📱 **Responsive design** for all devices

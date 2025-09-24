@@ -233,6 +233,18 @@ export class DatabaseService {
     }
   }
 
+  async resetUrlStatusesForJob(jobId: string): Promise<void> {
+    const client = await this.pool.connect();
+    try {
+      await client.query(
+        'UPDATE urls SET status = $1, opener = NULL, error = NULL, retry_count = 0, updated_at = NOW() WHERE job_id = $2',
+        ['pending', jobId]
+      );
+    } finally {
+      client.release();
+    }
+  }
+
   async getFailedUrls(jobId: string): Promise<UrlRecord[]> {
     const client = await this.pool.connect();
     try {

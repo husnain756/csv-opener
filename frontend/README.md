@@ -24,7 +24,7 @@ frontend/
 │   ├── SettingsModal.tsx
 │   └── index.ts                  # Barrel exports
 ├── hooks/                        # Custom React hooks
-│   ├── useJobPolling.ts
+│   ├── useJobSSE.ts
 │   ├── useLocalStorage.ts
 │   └── index.ts
 ├── lib/                          # Utilities and configurations
@@ -73,7 +73,7 @@ frontend/
 
 - **File Upload**: Drag-and-drop CSV file upload
 - **Job Management**: Real-time job monitoring and management
-- **Progress Tracking**: Live progress updates with polling
+- **Progress Tracking**: Real-time progress updates with Server-Sent Events
 - **Error Handling**: Comprehensive error states and recovery
 - **Responsive Design**: Mobile-first responsive layout
 - **Accessibility**: ARIA labels and keyboard navigation
@@ -106,7 +106,7 @@ export function Component({ ...props }: ComponentProps) {
 ### Naming Conventions
 - **Components**: PascalCase (`CSVUploader`)
 - **Files**: PascalCase for components, camelCase for utilities
-- **Hooks**: camelCase starting with `use` (`useJobPolling`)
+- **Hooks**: camelCase starting with `use` (`useJobSSE`)
 - **Types**: PascalCase (`JobStatus`, `ContentType`)
 
 ### Performance Considerations
@@ -128,7 +128,7 @@ export function Component({ ...props }: ComponentProps) {
 import { ThemeToggle, SettingsModal } from '@/components'
 import { useAppStore } from '@/lib'
 import { jobService } from '@/services'
-import { useJobPolling } from '@/hooks'
+import { useJobSSE } from '@/hooks'
 import { Job, ContentType } from '@/types'
 
 // Feature-specific imports

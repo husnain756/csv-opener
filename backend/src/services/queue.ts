@@ -4,6 +4,7 @@ import { config } from '../config';
 import { logger } from '../utils/logger';
 import { database } from './database';
 import { OpenAIService } from './openaiService';
+import { progressEmitter } from './progressEmitter';
 import { v4 as uuidv4 } from 'uuid';
 
 export interface ChunkJobData {
@@ -46,6 +47,21 @@ export const csvProcessingWorker = new Worker(
       try {
         // Update URL status to processing
         await database.updateUrlStatus(urlRecord.id, 'processing');
+
+        // Emit progress update for current URL
+        const jobRecord = await database.getJob(jobId);
+        if (jobRecord) {
+          const currentProgress = await database.getJobProgress(jobId);
+          if (currentProgress) {
+            progressEmitter.emitUrlProgress(
+              jobId,
+              currentProgress.processed,
+              currentProgress.failed,
+              currentProgress.pending,
+              urlRecord.url
+            );
+          }
+        }
 
         // Generate opener with retry logic
         const result = await openaiService.generateOpenerWithRetry(
@@ -96,9 +112,21 @@ export const csvProcessingWorker = new Worker(
         newFailedRows
       );
 
+      // Emit progress update after chunk completion
+      const currentProgress = await database.getJobProgress(jobId);
+      if (currentProgress) {
+        progressEmitter.emitUrlProgress(
+          jobId,
+          currentProgress.processed,
+          currentProgress.failed,
+          currentProgress.pending
+        );
+      }
+
       // Check if job is complete
       if (newProcessedRows + newFailedRows >= jobRecord.total_rows) {
         await database.updateJobStatus(jobId, 'completed');
+        progressEmitter.emitJobComplete(jobId, newProcessedRows, newFailedRows);
         logger.info(`Job ${jobId} completed successfully`);
       }
     }
@@ -171,6 +199,23 @@ export async function addChunkedJobs(
     );
   }
 }
+
+// Add error handlers for the worker
+csvProcessingWorker.on('error', (error) => {
+  logger.error('CSV processing worker error:', error);
+});
+
+csvProcessingWorker.on('failed', (job, error) => {
+  logger.error(`CSV processing job ${job?.id} failed:`, error);
+});
+
+csvProcessingWorker.on('completed', (job) => {
+  logger.info(`CSV processing job ${job.id} completed successfully`);
+});
+
+csvProcessingWorker.on('ready', () => {
+  logger.info('CSV processing worker is ready and listening for jobs');
+});
 
 export default csvProcessingQueue;
 

@@ -46,11 +46,23 @@ export class JobService {
     file: File,
     contentType: string
   ): Promise<{ jobId: string; message: string }> {
-    return await apiClient.uploadFile<{ jobId: string; message: string }>(
+    // Step 1: Upload CSV file
+    const uploadResponse = await apiClient.uploadFile<{ jobId: string; message: string }>(
       '/api/upload',
       file,
       { contentType }
     )
+    
+    // Step 2: Start processing the job
+    const startResponse = await apiClient.post<{ jobId: string; message: string }>(
+      '/api/upload/process',
+      {
+        jobId: uploadResponse.jobId,
+        contentType
+      }
+    )
+    
+    return startResponse
   }
 
   // Download job results

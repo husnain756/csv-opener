@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { useParams, useRouter } from 'next/navigation'
 import { 
   Card, 
   CardBody, 
@@ -13,108 +14,114 @@ import {
   TableRow,
   TableCell,
   Chip,
-  Pagination,
-  Input,
-  Select,
-  SelectItem,
-  Checkbox,
+  Progress,
+  Spinner,
   Modal,
   ModalContent,
   ModalHeader,
   ModalBody,
   ModalFooter,
-  useDisclosure,
-  Spinner
+  useDisclosure
 } from '@nextui-org/react'
 import { 
-  ArrowLeft, 
+  Download, 
   RefreshCw, 
+  Clock,
   CheckCircle,
   XCircle,
-  Clock,
+  AlertCircle,
   Play,
-  Filter,
-  RotateCcw
+  ArrowLeft,
+  Eye
 } from 'lucide-react'
-import { useRouter, useParams } from 'next/navigation'
 import { jobService } from '@/services'
-import { JobRetry } from './JobRetry'
-import { JobDetails, UrlRecord } from '@/types'
+import { useJobManagementSSE } from '@/hooks'
 
-const ITEMS_PER_PAGE = 20
+interface Job {
+  id: string
+  file_name: string
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled'
+  total_rows: number
+  processed_rows: number
+  failed_rows: number
+  created_at: string
+  updated_at: string
+  progress: string
+}
+
+interface JobResult {
+  id: string
+  url: string
+  status: 'completed' | 'failed'
+  opener?: string
+  error?: string
+  retry_count: number
+}
 
 export default function JobDetailsPage() {
-  const router = useRouter()
   const params = useParams()
+  const router = useRouter()
   const jobId = params.jobId as string
-
-  const [job, setJob] = useState<JobDetails | null>(null)
-  const [urls, setUrls] = useState<UrlRecord[]>([])
+  
+  const [job, setJob] = useState<Job | null>(null)
+  const [results, setResults] = useState<JobResult[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [rateLimited, setRateLimited] = useState(false)
-  const [currentPage, setCurrentPage] = useState(1)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState<string>('all')
-  const [selectedUrls, setSelectedUrls] = useState<Set<string>>(new Set())
-  const [retrying, setRetrying] = useState(false)
-
   const { isOpen: isRetryModalOpen, onOpen: onRetryModalOpen, onClose: onRetryModalClose } = useDisclosure()
+
+  // Use SSE for real-time updates
+  const { jobProgress, isConnected, error: sseError } = useJobManagementSSE(jobId ? [jobId] : [])
+
+  // Update job with real-time SSE data
+  useEffect(() => {
+    if (jobProgress[jobId]) {
+      const progress = jobProgress[jobId]
+      setJob(prevJob => {
+        if (!prevJob) return prevJob
+        return {
+          ...prevJob,
+          status: progress.status,
+          processed_rows: progress.progress.completed,
+          failed_rows: progress.progress.failed,
+          progress: `${progress.progress.completed}/${progress.progress.total}`
+        }
+      })
+    }
+  }, [jobProgress, jobId])
 
   useEffect(() => {
     if (jobId) {
       fetchJobDetails()
-      fetchUrls()
-      
-      // Set up polling for real-time updates - reduced frequency to avoid 429 errors
-      const interval = setInterval(() => {
-        // Only poll if job is still processing and not rate limited
-        if (!job || (job.status !== 'completed' && job.status !== 'failed' && job.status !== 'cancelled')) {
-          if (!rateLimited) {
-            fetchJobDetails()
-            fetchUrls()
-          }
-        } else {
-          // Job is completed, stop polling
-          clearInterval(interval)
-        }
-      }, 15000) // Increased to 15 seconds to reduce API calls
-      
-      return () => clearInterval(interval)
+      fetchResults()
     }
-  }, [jobId, job, rateLimited])
+  }, [jobId])
 
   const fetchJobDetails = async () => {
     try {
-      const data = await jobService.getJobDetails(jobId)
-      setJob(data)
-      setRateLimited(false)
-    } catch (err) {
-      if (err instanceof Error && err.message.includes('Rate limited')) {
-        setRateLimited(true)
-        // Auto-resume after 30 seconds
-        setTimeout(() => setRateLimited(false), 30000)
+      setLoading(true)
+      const data = await jobService.getAllJobs()
+      const jobData = data.find((j: Job) => j.id === jobId)
+      if (jobData) {
+        setJob(jobData)
       } else {
-        setError(err instanceof Error ? err.message : 'Unknown error')
+        setError('Job not found')
       }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch job details')
+    } finally {
+      setLoading(false)
     }
   }
 
-  const fetchUrls = async () => {
+  const fetchResults = async () => {
     try {
-      const data = await jobService.getJobResults(jobId)
-      setUrls(data.urls || [])
-      setRateLimited(false)
-    } catch (err) {
-      if (err instanceof Error && err.message.includes('Rate limited')) {
-        setRateLimited(true)
-        // Auto-resume after 30 seconds
-        setTimeout(() => setRateLimited(false), 30000)
-      } else {
-        setError(err instanceof Error ? err.message : 'Unknown error')
+      const response = await fetch(`/api/jobs/${jobId}/results`)
+      if (response.ok) {
+        const data = await response.json()
+        setResults(data.urls || [])
       }
-    } finally {
-      setLoading(false)
+    } catch (err) {
+      console.error('Failed to fetch results:', err)
     }
   }
 
@@ -124,6 +131,7 @@ export default function JobDetailsPage() {
       case 'processing': return <RefreshCw className="w-4 h-4 animate-spin" />
       case 'completed': return <CheckCircle className="w-4 h-4" />
       case 'failed': return <XCircle className="w-4 h-4" />
+      case 'cancelled': return <AlertCircle className="w-4 h-4" />
       default: return <Clock className="w-4 h-4" />
     }
   }
@@ -134,93 +142,72 @@ export default function JobDetailsPage() {
       case 'processing': return 'primary'
       case 'completed': return 'success'
       case 'failed': return 'danger'
+      case 'cancelled': return 'warning'
       default: return 'default'
     }
   }
 
-  const filteredUrls = urls.filter(url => {
-    const matchesSearch = url.url.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesStatus = statusFilter === 'all' || url.status === statusFilter
-    return matchesSearch && matchesStatus
-  })
-
-  const totalPages = Math.ceil(filteredUrls.length / ITEMS_PER_PAGE)
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
-  const endIndex = startIndex + ITEMS_PER_PAGE
-  const paginatedUrls = filteredUrls.slice(startIndex, endIndex)
-
-  const handleRetrySingle = async (urlId: string) => {
+  const handleRetryJob = async () => {
     try {
-      setRetrying(true)
       const response = await fetch(`/api/jobs/${jobId}/retry`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ urlIds: [urlId] })
+        headers: { 'Content-Type': 'application/json' }
       })
       
       if (response.ok) {
-        await fetchUrls()
-      }
-    } catch (err) {
-      setError('Failed to retry URL')
-    } finally {
-      setRetrying(false)
-    }
-  }
-
-  const handleBulkRetry = async () => {
-    if (selectedUrls.size === 0) return
-
-    try {
-      setRetrying(true)
-      const response = await fetch(`/api/jobs/${jobId}/retry`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ urlIds: Array.from(selectedUrls) })
-      })
-      
-      if (response.ok) {
-        setSelectedUrls(new Set())
-        await fetchUrls()
+        await fetchJobDetails()
+        await fetchResults()
         onRetryModalClose()
       }
     } catch (err) {
-      setError('Failed to retry URLs')
-    } finally {
-      setRetrying(false)
+      setError('Failed to retry job')
     }
   }
 
-  const handleSelectAll = () => {
-    if (selectedUrls.size === paginatedUrls.length) {
-      setSelectedUrls(new Set())
-    } else {
-      setSelectedUrls(new Set(paginatedUrls.map(url => url.id)))
+  const handleDownloadResults = async () => {
+    try {
+      const blob = await jobService.downloadResults(jobId)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${job?.file_name}-results.csv`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      setError('Failed to download results')
     }
   }
 
-  const handleSelectUrl = (urlId: string) => {
-    const newSelected = new Set(selectedUrls)
-    if (newSelected.has(urlId)) {
-      newSelected.delete(urlId)
-    } else {
-      newSelected.add(urlId)
-    }
-    setSelectedUrls(newSelected)
+  const progressPercentage = (job: Job) => {
+    if (job.total_rows === 0) return 0
+    return Math.round((job.processed_rows / job.total_rows) * 100)
   }
-
-  const statusOptions = [
-    { key: 'all', label: 'All Statuses' },
-    { key: 'pending', label: 'Pending' },
-    { key: 'processing', label: 'Processing' },
-    { key: 'completed', label: 'Completed' },
-    { key: 'failed', label: 'Failed' }
-  ]
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
+      <div className="min-h-screen gradient-bg flex items-center justify-center">
         <Spinner size="lg" />
+      </div>
+    )
+  }
+
+  if (error || !job) {
+    return (
+      <div className="min-h-screen gradient-bg flex items-center justify-center">
+        <Card className="card-bubbly">
+          <CardBody className="p-8 text-center">
+            <XCircle className="w-16 h-16 text-danger mx-auto mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Error</h2>
+            <p className="text-default-500 mb-4">{error || 'Job not found'}</p>
+            <Button
+              color="primary"
+              onPress={() => router.push('/jobs')}
+              startContent={<ArrowLeft className="w-4 h-4" />}
+            >
+              Back to Jobs
+            </Button>
+          </CardBody>
+        </Card>
       </div>
     )
   }
@@ -236,235 +223,188 @@ export default function JobDetailsPage() {
               variant="ghost"
               onPress={() => router.push('/jobs')}
               className="hover:bg-secondary/50 rounded-bubbly"
-              aria-label="Go back to jobs list"
+              aria-label="Go back to jobs page"
             >
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div>
-              <h1 className="text-3xl font-bold text-foreground">Job Details</h1>
-              <p className="text-base text-foreground/70">
-                {job?.fileName} • {urls.length} URLs
-              </p>
+              <h1 className="text-3xl font-bold text-foreground mb-2">Job Details</h1>
+              <p className="text-base text-foreground/70">{job.file_name}</p>
             </div>
           </div>
         </div>
-        {/* Error Display */}
-        {error && (
-          <Card className="mb-8 border-danger/50 card-bubbly">
-            <CardBody className="py-4">
-              <div className="flex items-center gap-3 text-danger">
-                <XCircle className="w-5 h-5" />
-                <span className="font-medium">{error}</span>
-              </div>
-            </CardBody>
-          </Card>
-        )}
 
-        {/* Rate Limit Warning */}
-        {rateLimited && (
-          <Card className="mb-8 border-warning/50 card-bubbly">
-            <CardBody className="py-4">
-              <div className="flex items-center gap-3 text-warning">
-                <Clock className="w-5 h-5" />
-                <span className="font-medium">Rate limited - Updates will resume automatically</span>
-              </div>
-            </CardBody>
-          </Card>
-        )}
-
-        {/* Job Summary */}
-        {job && (
-          <Card className="mb-8 card-bubbly">
-            <CardHeader className="card-header-shadow">
-              <h2 className="text-xl font-semibold">Job Summary</h2>
-            </CardHeader>
-            <CardBody>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-primary">{job.totalRows}</div>
-                  <div className="text-sm text-default-500">Total URLs</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-success">{job.processedRows}</div>
-                  <div className="text-sm text-default-500">Completed</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-danger">{job.failedRows}</div>
-                  <div className="text-sm text-default-500">Failed</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-default">
-                    {job.totalRows - job.processedRows - job.failedRows}
-                  </div>
-                  <div className="text-sm text-default-500">Pending</div>
-                </div>
-              </div>
-            </CardBody>
-          </Card>
-        )}
-
-        {/* Filters and Actions */}
-        <Card className="mb-8 card-bubbly">
-          <CardBody>
-            <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-              <div className="flex flex-col md:flex-row gap-4 flex-1">
-                <Input
-                  placeholder="Search URLs..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  startContent={<Filter className="w-4 h-4" />}
-                  className="max-w-xs"
-                  aria-label="Search URLs"
-                />
-                <Select
-                  placeholder="Filter by status"
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="max-w-xs"
-                  aria-label="Filter URLs by status"
-                >
-                  {statusOptions.map((option) => (
-                    <SelectItem key={option.key} value={option.key}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </Select>
+        {/* Job Status Card */}
+        <Card className="card-bubbly mb-8">
+          <CardHeader className="card-header-shadow">
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center gap-3">
+                <h2 className="text-xl font-semibold">Job Status</h2>
+                {isConnected && (
+                  <Chip
+                    size="sm"
+                    color="success"
+                    variant="flat"
+                    startContent={<div className="w-2 h-2 bg-success rounded-full animate-pulse" />}
+                  >
+                    Live
+                  </Chip>
+                )}
+                {sseError && (
+                  <Chip
+                    size="sm"
+                    color="danger"
+                    variant="flat"
+                    startContent={<XCircle className="w-3 h-3" />}
+                  >
+                    Connection Error
+                  </Chip>
+                )}
               </div>
               <div className="flex items-center gap-2">
-                <Button
-                  color="primary"
-                  variant="bordered"
-                  startContent={<RefreshCw className="w-4 h-4" />}
-                  onPress={fetchUrls}
-                  className="border border-divider/50 rounded-bubbly font-medium shadow-bubbly hover:shadow-bubbly-lg dark:shadow-bubbly-dark dark:hover:shadow-bubbly-lg-dark transition-all duration-300"
-                  aria-label="Refresh URLs"
-                >
-                  Refresh
-                </Button>
-                {selectedUrls.size > 0 && (
+                {job.status === 'completed' && (
                   <Button
-                    color="warning"
-                    startContent={<RotateCcw className="w-4 h-4" />}
-                    onPress={onRetryModalOpen}
-                    className="rounded-bubbly font-medium shadow-bubbly hover:shadow-bubbly-lg dark:shadow-bubbly-dark dark:hover:shadow-bubbly-lg-dark transition-all duration-300"
-                    aria-label={`Retry ${selectedUrls.size} selected URLs`}
+                    color="primary"
+                    variant="bordered"
+                    startContent={<Download className="w-4 h-4" />}
+                    onPress={handleDownloadResults}
+                    className="rounded-bubbly"
                   >
-                    Retry Selected ({selectedUrls.size})
+                    Download Results
                   </Button>
                 )}
+                {job.status === 'failed' && (
+                  <Button
+                    color="warning"
+                    variant="bordered"
+                    startContent={<Play className="w-4 h-4" />}
+                    onPress={onRetryModalOpen}
+                    className="rounded-bubbly"
+                  >
+                    Retry Job
+                  </Button>
+                )}
+              </div>
+            </div>
+          </CardHeader>
+          <CardBody className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-foreground mb-1">{job.total_rows}</div>
+                <div className="text-sm text-default-500">Total URLs</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-success mb-1">{job.processed_rows}</div>
+                <div className="text-sm text-default-500">Completed</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-danger mb-1">{job.failed_rows}</div>
+                <div className="text-sm text-default-500">Failed</div>
+              </div>
+            </div>
+            
+            <div className="mt-6">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium">Progress</span>
+                <span className="text-sm text-default-500">{progressPercentage(job)}%</span>
+              </div>
+              <Progress 
+                value={progressPercentage(job)} 
+                color="primary"
+                size="lg"
+                className="mb-2"
+              />
+              <div className="flex items-center justify-between">
+                <Chip
+                  color={getStatusColor(job.status)}
+                  size="sm"
+                  startContent={getStatusIcon(job.status)}
+                >
+                  {job.status}
+                </Chip>
+                <span className="text-xs text-default-500">
+                  Last updated: {new Date(job.updated_at).toLocaleString()}
+                </span>
               </div>
             </div>
           </CardBody>
         </Card>
 
-        {/* URLs Table */}
+        {/* Results Table */}
         <Card className="card-bubbly">
           <CardHeader className="card-header-shadow">
-            <div className="flex items-center justify-between w-full">
-              <h2 className="text-xl font-semibold">URLs ({filteredUrls.length})</h2>
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  isSelected={selectedUrls.size === paginatedUrls.length && paginatedUrls.length > 0}
-                  isIndeterminate={selectedUrls.size > 0 && selectedUrls.size < paginatedUrls.length}
-                  onChange={handleSelectAll}
-                  aria-label="Select all URLs on current page"
-                >
-                  Select All
-                </Checkbox>
-              </div>
-            </div>
+            <h2 className="text-xl font-semibold">Results</h2>
           </CardHeader>
           <CardBody>
-            <div className="overflow-x-auto">
-              <Table aria-label="URLs table">
-                <TableHeader>
-                  <TableColumn>SELECT</TableColumn>
-                  <TableColumn>URL</TableColumn>
-                  <TableColumn>STATUS</TableColumn>
-                  <TableColumn>OPENER</TableColumn>
-                  <TableColumn>ERROR</TableColumn>
-                  <TableColumn>RETRY COUNT</TableColumn>
-                  <TableColumn>ACTIONS</TableColumn>
-                </TableHeader>
-                <TableBody>
-                  {paginatedUrls.map((url) => (
-                    <TableRow key={url.id}>
-                      <TableCell>
-                        <Checkbox
-                          isSelected={selectedUrls.has(url.id)}
-                          onChange={() => handleSelectUrl(url.id)}
-                          aria-label={`Select URL ${url.url}`}
-                        />
-                      </TableCell>
-                      <TableCell className="max-w-xs">
-                        <div className="truncate" title={url.url}>
-                          {url.url}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          color={getStatusColor(url.status)}
-                          size="sm"
-                          startContent={getStatusIcon(url.status)}
-                        >
-                          {url.status}
-                        </Chip>
-                      </TableCell>
-                      <TableCell className="max-w-md">
-                        <div className="truncate" title={url.opener}>
-                          {url.opener || '-'}
-                        </div>
-                      </TableCell>
-                      <TableCell className="max-w-xs">
-                        <div className="truncate text-danger" title={url.error}>
-                          {url.error || '-'}
-                        </div>
-                      </TableCell>
-                      <TableCell>{url.retryCount}</TableCell>
-                      <TableCell>
-                        {url.status === 'failed' && (
-                          <Button
+            {results.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-default-500">No results available</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table aria-label="Results table">
+                  <TableHeader>
+                    <TableColumn>URL</TableColumn>
+                    <TableColumn>STATUS</TableColumn>
+                    <TableColumn>OPENER</TableColumn>
+                    <TableColumn>ERROR</TableColumn>
+                    <TableColumn>RETRIES</TableColumn>
+                  </TableHeader>
+                  <TableBody>
+                    {results.map((result) => (
+                      <TableRow key={result.id}>
+                        <TableCell>
+                          <div className="max-w-xs truncate" title={result.url}>
+                            {result.url}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            color={result.status === 'completed' ? 'success' : 'danger'}
                             size="sm"
-                            color="warning"
-                            variant="ghost"
-                            startContent={<Play className="w-4 h-4" />}
-                            onPress={() => handleRetrySingle(url.id)}
-                            isLoading={retrying}
-                            className="hover:bg-warning/10 rounded-bubbly"
-                            aria-label={`Retry URL ${url.url}`}
+                            startContent={result.status === 'completed' ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
                           >
-                            Retry
-                          </Button>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex justify-center mt-6">
-                <Pagination
-                  total={totalPages}
-                  page={currentPage}
-                  onChange={setCurrentPage}
-                  showControls
-                />
+                            {result.status}
+                          </Chip>
+                        </TableCell>
+                        <TableCell>
+                          {result.opener ? (
+                            <div className="max-w-xs truncate" title={result.opener}>
+                              {result.opener}
+                            </div>
+                          ) : (
+                            <span className="text-default-400">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {result.error ? (
+                            <div className="max-w-xs truncate text-danger" title={result.error}>
+                              {result.error}
+                            </div>
+                          ) : (
+                            <span className="text-default-400">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-sm">{result.retry_count}</span>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
             )}
           </CardBody>
         </Card>
       </main>
 
-      {/* Bulk Retry Modal */}
+      {/* Retry Modal */}
       <Modal isOpen={isRetryModalOpen} onClose={onRetryModalClose}>
         <ModalContent>
-          <ModalHeader>Retry Selected URLs</ModalHeader>
+          <ModalHeader>Retry Job</ModalHeader>
           <ModalBody>
             <p className="text-default-600">
-              Are you sure you want to retry {selectedUrls.size} selected URLs? 
+              Are you sure you want to retry the job "{job.file_name}"? 
               This will reprocess all failed URLs.
             </p>
           </ModalBody>
@@ -478,11 +418,10 @@ export default function JobDetailsPage() {
             </Button>
             <Button 
               color="warning" 
-              onPress={handleBulkRetry}
-              isLoading={retrying}
+              onPress={handleRetryJob}
               className="rounded-bubbly font-medium shadow-bubbly hover:shadow-bubbly-lg dark:shadow-bubbly-dark dark:hover:shadow-bubbly-lg-dark transition-all duration-300"
             >
-              Retry URLs
+              Retry Job
             </Button>
           </ModalFooter>
         </ModalContent>

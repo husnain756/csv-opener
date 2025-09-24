@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { database } from '../services/database';
 import { CSVService } from '../services/csvService';
 import { addChunkedJobs } from '../services/queue';
+import { progressEmitter } from '../services/progressEmitter';
 import { ContentType } from '../types';
 import { logger } from '../utils/logger';
 
@@ -183,8 +184,16 @@ export class UploadController {
         url: url.url
       }));
 
-      // Update job status to processing
-      await database.updateJobStatus(jobId, 'processing');
+      // Update job status to processing and reset counters
+      await database.updateJobStatus(jobId, 'processing', 0, 0);
+
+      // Reset all URL statuses to pending for this job
+      for (const urlRecord of urlRecords) {
+        await database.updateUrlStatus(urlRecord.id, 'pending', undefined, undefined, 0);
+      }
+
+      // Emit job start event
+      progressEmitter.emitJobStart(jobId, urlRecords.length);
 
       // Add chunked jobs to the queue
       await addChunkedJobs(jobId, urlRecords, contentType as ContentType);

@@ -1,3 +1,3 @@
 // Custom Hooks
-export { useJobPolling } from './useJobPolling'
+export { useJobManagementSSE } from './useJobManagementSSE'
 export { useLocalStorage } from './useLocalStorage'

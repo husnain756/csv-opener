@@ -2,7 +2,7 @@
 export interface Job {
   id: string
   file_name: string
-  status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled'
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'stopped'
   total_rows: number
   processed_rows: number
   failed_rows: number

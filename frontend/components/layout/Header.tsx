@@ -2,7 +2,7 @@
 
 import React from 'react'
 import { Button } from '@nextui-org/react'
-import { FileText, Settings } from 'lucide-react'
+import { FileText, Settings, Upload } from 'lucide-react'
 import { ThemeToggle } from '../ui/ThemeToggle'
 import { useRouter, usePathname } from 'next/navigation'
 
@@ -14,9 +14,20 @@ export function Header() {
     router.push('/jobs')
   }
 
+  const handleUploadCSV = () => {
+    router.push('/')
+  }
+
   const handleGoHome = () => {
     router.push('/')
   }
+
+  // Determine which page we're on
+  const isOnJobsPage = pathname === '/jobs' || pathname.startsWith('/jobs/')
+  const isOnHomePage = pathname === '/'
+  
+  // Debug logging
+  console.log('Header Debug:', { pathname, isOnHomePage, isOnJobsPage })
 
   return (
     <header className="border-b border-divider/50 bg-background/95 backdrop-blur-md shadow-bubbly sticky top-0 z-50 glow-primary">
@@ -35,17 +46,32 @@ export function Header() {
         </div>
         
         <div className="flex items-center gap-4">
-          {pathname !== '/jobs' && (
-            <Button
-              variant="ghost"
-              startContent={<Settings className="w-4 h-4" />}
-              onPress={handleManageJobs}
-              className="hover:bg-secondary/50 rounded-bubbly"
-              aria-label="Manage jobs"
-            >
-              Manage Jobs
-            </Button>
-          )}
+          <Button
+            variant="ghost"
+            startContent={<Upload className="w-4 h-4" />}
+            onPress={handleUploadCSV}
+            className={`rounded-bubbly transition-all duration-200 ${
+              isOnHomePage 
+                ? "border-2 border-primary bg-primary/10" 
+                : "hover:bg-secondary/50"
+            }`}
+            aria-label="Upload CSV"
+          >
+            Upload CSV
+          </Button>
+          <Button
+            variant="ghost"
+            startContent={<Settings className="w-4 h-4" />}
+            onPress={handleManageJobs}
+            className={`rounded-bubbly transition-all duration-200 ${
+              isOnJobsPage 
+                ? "border-2 border-primary bg-primary/10" 
+                : "hover:bg-secondary/50"
+            }`}
+            aria-label="Manage jobs"
+          >
+            Manage Jobs
+          </Button>
           <ThemeToggle />
         </div>
       </div>

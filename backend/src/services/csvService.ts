@@ -5,6 +5,9 @@ import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { CSVRow, ProcessedCSVRow } from '../types';
 import { validateAndNormalizeUrl } from '../utils/urlValidator';
+import { config } from '../config';
+import { logger } from '../utils/logger';
+import { memoryMonitor } from '../utils/memoryMonitor';
 
 export class CSVService {
   private uploadDir: string;
@@ -78,6 +81,92 @@ export class CSVService {
           reject(error);
         });
     });
+  }
+
+  // New streaming method for large files
+  async parseCSVStreaming(
+    filePath: string, 
+    urlColumn: string, 
+    jobId: string,
+    onProgress?: (processed: number, total: number) => void
+  ): Promise<{ totalRows: number; columns: string[] }> {
+    return new Promise((resolve, reject) => {
+      let totalRows = 0;
+      let processedRows = 0;
+      let columns: string[] = [];
+      let currentBatch: string[] = [];
+      const batchSize = config.streamingBatchSize;
+
+      // Read first few lines to detect delimiter
+      const content = fs.readFileSync(filePath, 'utf8');
+      const delimiter = this.detectDelimiter(content);
+
+      logger.info(`Starting streaming CSV parse for job ${jobId} with batch size ${batchSize}`);
+
+      fs.createReadStream(filePath)
+        .pipe(csv({ separator: delimiter }))
+        .on('headers', (headers: string[]) => {
+          columns = headers;
+          logger.info(`Detected columns: ${headers.join(', ')}`);
+        })
+        .on('data', async (data: Record<string, string>) => {
+          totalRows++;
+          const urlValue = data[urlColumn];
+          
+          if (urlValue && urlValue.trim()) {
+            currentBatch.push(urlValue.trim());
+            
+            // Process batch when it reaches batch size
+            if (currentBatch.length >= batchSize) {
+              try {
+                await this.processBatch(jobId, currentBatch);
+                processedRows += currentBatch.length;
+                currentBatch = []; // Clear batch from memory
+                
+                // Check memory usage
+                memoryMonitor.checkMemoryUsage();
+                
+                // Report progress
+                if (onProgress) {
+                  onProgress(processedRows, totalRows);
+                }
+                
+                logger.debug(`Processed ${processedRows}/${totalRows} rows for job ${jobId}`);
+              } catch (error) {
+                logger.error(`Error processing batch for job ${jobId}:`, error);
+                reject(error);
+                return;
+              }
+            }
+          }
+        })
+        .on('end', async () => {
+          try {
+            // Process remaining batch
+            if (currentBatch.length > 0) {
+              await this.processBatch(jobId, currentBatch);
+              processedRows += currentBatch.length;
+            }
+            
+            logger.info(`Completed streaming CSV parse for job ${jobId}: ${processedRows}/${totalRows} rows processed`);
+            resolve({ totalRows, columns });
+          } catch (error) {
+            logger.error(`Error processing final batch for job ${jobId}:`, error);
+            reject(error);
+          }
+        })
+        .on('error', (error) => {
+          logger.error(`Error in streaming CSV parse for job ${jobId}:`, error);
+          reject(error);
+        });
+    });
+  }
+
+  private async processBatch(jobId: string, urls: string[]): Promise<void> {
+    // This will be implemented when we update the database service
+    // For now, we'll use the existing createUrls method
+    const { database } = await import('./database');
+    await database.createUrls(jobId, urls);
   }
 
   async validateAndSetUrls(rows: CSVRow[], urlColumn: string): Promise<{ validRows: CSVRow[]; invalidRows: CSVRow[] }> {

@@ -36,6 +36,13 @@ export const config = {
   maxRetries: parseInt(process.env.MAX_RETRIES || '3', 10),
   retryDelay: parseInt(process.env.RETRY_DELAY || '1000', 10),
   backoffMultiplier: parseFloat(process.env.BACKOFF_MULTIPLIER || '2'),
+  
+  // Memory optimization settings
+  maxRowsPerJob: parseInt(process.env.MAX_ROWS_PER_JOB || '100000', 10), // 100k rows
+  batchSize: parseInt(process.env.BATCH_SIZE || '1000', 10), // URLs per batch
+  chunkSize: parseInt(process.env.CHUNK_SIZE || '500', 10), // URLs per chunk
+  memoryLimitMB: parseInt(process.env.MEMORY_LIMIT_MB || '1000', 10), // 1GB limit
+  streamingBatchSize: parseInt(process.env.STREAMING_BATCH_SIZE || '500', 10), // Streaming batch size
 };
 
 // Validate required configuration

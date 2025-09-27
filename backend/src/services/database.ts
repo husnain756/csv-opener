@@ -6,11 +6,12 @@ export interface JobRecord {
   id: string;
   file_name: string;
   file_path: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed' | 'canceled';
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'stopped';
   total_rows: number;
   processed_rows: number;
   failed_rows: number;
   progress: number;
+  content_type: 'company' | 'person' | 'news';
   created_at: Date;
   updated_at: Date;
 }
@@ -56,6 +57,7 @@ export class DatabaseService {
           processed_rows INTEGER NOT NULL DEFAULT 0,
           failed_rows INTEGER NOT NULL DEFAULT 0,
           progress DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+          content_type VARCHAR(20) NOT NULL DEFAULT 'company',
           created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
           updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
         )
@@ -95,15 +97,16 @@ export class DatabaseService {
   async createJob(
     fileName: string,
     filePath: string,
-    totalRows: number
+    totalRows: number,
+    contentType: 'company' | 'person' | 'news' = 'company'
   ): Promise<string> {
     const client = await this.pool.connect();
     try {
       const result = await client.query(
-        `INSERT INTO jobs (file_name, file_path, total_rows, status)
-         VALUES ($1, $2, $3, 'pending')
+        `INSERT INTO jobs (file_name, file_path, total_rows, status, content_type)
+         VALUES ($1, $2, $3, 'pending', $4)
          RETURNING id`,
-        [fileName, filePath, totalRows]
+        [fileName, filePath, totalRows, contentType]
       );
       return result.rows[0].id;
     } finally {
@@ -183,6 +186,41 @@ export class DatabaseService {
     }
   }
 
+  async updateJobProgress(
+    jobId: string,
+    processedRows: number,
+    failedRows: number
+  ): Promise<void> {
+    const client = await this.pool.connect();
+    try {
+      const job = await this.getJob(jobId);
+      if (!job) {
+        throw new Error(`Job ${jobId} not found`);
+      }
+
+      const progress = job.total_rows > 0 ? (processedRows / job.total_rows) * 100 : 0;
+
+      await client.query(
+        `UPDATE jobs SET processed_rows = $2, failed_rows = $3, progress = $4, updated_at = NOW() WHERE id = $1`,
+        [jobId, processedRows, failedRows, progress]
+      );
+    } finally {
+      client.release();
+    }
+  }
+
+  async updateJobContentType(jobId: string, contentType: 'company' | 'person' | 'news'): Promise<void> {
+    const client = await this.pool.connect();
+    try {
+      await client.query(
+        'UPDATE jobs SET content_type = $1, updated_at = NOW() WHERE id = $2',
+        [contentType, jobId]
+      );
+    } finally {
+      client.release();
+    }
+  }
+
   async updateUrlStatus(
     urlId: string,
     status: UrlRecord['status'],
@@ -211,10 +249,20 @@ export class DatabaseService {
         values.push(retryCount.toString());
       }
 
-      await client.query(
+      const result = await client.query(
         `UPDATE urls SET ${updates.join(', ')} WHERE id = $1`,
         values
       );
+      
+      // Log the update result for debugging
+      logger.debug(`Updated URL ${urlId} to status ${status}, rows affected: ${result.rowCount}`);
+      
+      if (result.rowCount === 0) {
+        logger.warn(`No rows updated for URL ${urlId} - URL may not exist`);
+      }
+    } catch (error) {
+      logger.error(`Failed to update URL ${urlId} status:`, error);
+      throw error;
     } finally {
       client.release();
     }
@@ -228,6 +276,34 @@ export class DatabaseService {
         [jobId]
       );
       return result.rows;
+    } finally {
+      client.release();
+    }
+  }
+
+  // New paginated method for memory optimization
+  async getUrlsByJobPaginated(jobId: string, offset: number, limit: number): Promise<UrlRecord[]> {
+    const client = await this.pool.connect();
+    try {
+      const result = await client.query(
+        'SELECT * FROM urls WHERE job_id = $1 ORDER BY created_at LIMIT $2 OFFSET $3',
+        [jobId, limit, offset]
+      );
+      return result.rows;
+    } finally {
+      client.release();
+    }
+  }
+
+  // Get total count of URLs for a job
+  async getUrlCountByJob(jobId: string): Promise<number> {
+    const client = await this.pool.connect();
+    try {
+      const result = await client.query(
+        'SELECT COUNT(*) as count FROM urls WHERE job_id = $1',
+        [jobId]
+      );
+      return parseInt(result.rows[0].count);
     } finally {
       client.release();
     }
@@ -391,6 +467,29 @@ export class DatabaseService {
         'SELECT * FROM jobs ORDER BY created_at DESC'
       );
       return result.rows;
+    } finally {
+      client.release();
+    }
+  }
+
+  // Delete job and all its URLs
+  async deleteJob(jobId: string): Promise<void> {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      
+      // Delete all URLs for this job
+      await client.query('DELETE FROM urls WHERE job_id = $1', [jobId]);
+      
+      // Delete the job
+      await client.query('DELETE FROM jobs WHERE id = $1', [jobId]);
+      
+      await client.query('COMMIT');
+      logger.info(`Deleted job ${jobId} and all its URLs`);
+    } catch (error) {
+      await client.query('ROLLBACK');
+      logger.error(`Error deleting job ${jobId}:`, error);
+      throw error;
     } finally {
       client.release();
     }

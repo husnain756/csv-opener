@@ -3,7 +3,7 @@ import { logger } from '../utils/logger';
 
 export interface JobProgressUpdate {
   jobId: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'stopped';
   progress: {
     total: number;
     completed: number;
@@ -97,6 +97,20 @@ class ProgressEmitter extends EventEmitter {
         pending
       },
       currentUrl
+    };
+    this.emitProgress(jobId, update);
+  }
+
+  public emitJobStopped(jobId: string, completed: number, failed: number, pending: number): void {
+    const update: JobProgressUpdate = {
+      jobId,
+      status: 'stopped',
+      progress: {
+        total: completed + failed + pending,
+        completed,
+        failed,
+        pending
+      }
     };
     this.emitProgress(jobId, update);
   }

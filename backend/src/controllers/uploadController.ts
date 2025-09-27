@@ -8,6 +8,8 @@ import { addChunkedJobs } from '../services/queue';
 import { progressEmitter } from '../services/progressEmitter';
 import { ContentType } from '../types';
 import { logger } from '../utils/logger';
+import { config } from '../config';
+import { memoryMonitor } from '../utils/memoryMonitor';
 
 export class UploadController {
   private csvService: CSVService;
@@ -109,16 +111,96 @@ export class UploadController {
       const filePath = req.file.path;
       const fileName = req.file.originalname;
 
-      // Parse CSV to get preview and columns
-      const { rows, columns } = await this.csvService.parseCSV(filePath);
-      const preview = this.csvService.getPreview(rows, 10);
+      // Check file size and estimate rows
+      const fileStats = require('fs').statSync(filePath);
+      const fileSizeMB = fileStats.size / (1024 * 1024);
+      
+      // Rough estimate: 1KB per row (very conservative)
+      const estimatedRows = Math.round(fileStats.size / 1024);
+      
+      logger.info(`Processing file: ${fileName}, Size: ${fileSizeMB.toFixed(2)}MB, Estimated rows: ${estimatedRows}`);
 
-      // Create job in database
-      const jobId = await database.createJob(fileName, filePath, rows.length);
+      // Check if we can process this file
+      const memoryCheck = memoryMonitor.canProcessFile(estimatedRows);
+      if (!memoryCheck.canProcess) {
+        res.status(413).json({ 
+          error: 'File too large to process',
+          details: memoryCheck.reason
+        });
+        return;
+      }
 
-      // Auto-detect URL column
-      const urlColumn = this.detectUrlColumn(columns, rows);
-      logger.info(`Detected URL column: ${urlColumn}`, { columns, sampleRows: rows.slice(0, 3) });
+      // For small files, use the original method for preview
+      if (estimatedRows < config.streamingBatchSize) {
+        return this.uploadCSVSmall(req, res);
+      }
+
+      // For large files, use streaming method
+      return this.uploadCSVStreaming(req, res);
+    } catch (error) {
+      logger.error('Upload error:', error);
+      res.status(500).json({
+        error: 'Failed to process CSV file',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+
+  private async uploadCSVSmall(req: Request, res: Response): Promise<void> {
+    const filePath = req.file!.path;
+    const fileName = req.file!.originalname;
+
+    // Parse CSV to get preview and columns
+    const { rows, columns } = await this.csvService.parseCSV(filePath);
+    const preview = this.csvService.getPreview(rows, 10);
+
+    // Create job in database
+    const jobId = await database.createJob(fileName, filePath, rows.length, 'company');
+
+    // Auto-detect URL column
+    const urlColumn = this.detectUrlColumn(columns, rows);
+    logger.info(`Detected URL column: ${urlColumn}`, { columns, sampleRows: rows.slice(0, 3) });
+    
+    if (!urlColumn) {
+      res.status(400).json({ 
+        error: 'No URL column found. Please ensure your CSV has a column containing URLs.' 
+      });
+      return;
+    }
+
+    // Extract URLs from the detected column
+    const urls = rows.map(row => (row as any).originalData[urlColumn] as string).filter(Boolean);
+    logger.info(`Extracted ${urls.length} URLs from column '${urlColumn}'`, { sampleUrls: urls.slice(0, 3) });
+    
+    // Create URL records in database
+    await database.createUrls(jobId, urls);
+
+    logger.info(`Created job ${jobId} with ${rows.length} rows`);
+
+    res.json({
+      jobId,
+      fileName,
+      totalRows: rows.length,
+      preview,
+      columns,
+    });
+  }
+
+  private async uploadCSVStreaming(req: Request, res: Response): Promise<void> {
+    const filePath = req.file!.path;
+    const fileName = req.file!.originalname;
+
+    // Create job in database first
+    const jobId = await database.createJob(fileName, filePath, 0, 'company'); // Will update row count later
+
+    try {
+      // Get a small sample for preview and column detection
+      const { rows: sampleRows, columns } = await this.csvService.parseCSV(filePath);
+      const preview = this.csvService.getPreview(sampleRows, 10);
+
+      // Auto-detect URL column from sample
+      const urlColumn = this.detectUrlColumn(columns, sampleRows);
+      logger.info(`Detected URL column: ${urlColumn}`, { columns, sampleRows: sampleRows.slice(0, 3) });
       
       if (!urlColumn) {
         res.status(400).json({ 
@@ -127,28 +209,48 @@ export class UploadController {
         return;
       }
 
-      // Extract URLs from the detected column
-      const urls = rows.map(row => (row as any).originalData[urlColumn] as string).filter(Boolean);
-      logger.info(`Extracted ${urls.length} URLs from column '${urlColumn}'`, { sampleUrls: urls.slice(0, 3) });
-      
-      // Create URL records in database
-      await database.createUrls(jobId, urls);
+      // Start streaming processing in background
+      this.processCSVStreaming(jobId, filePath, urlColumn, columns);
 
-      logger.info(`Created job ${jobId} with ${rows.length} rows`);
-
+      // Return immediately with preview
       res.json({
         jobId,
         fileName,
-        totalRows: rows.length,
+        totalRows: 0, // Will be updated by streaming process
         preview,
         columns,
+        processing: true,
+        message: 'Large file detected. Processing in background...'
       });
+
     } catch (error) {
-      logger.error('Upload error:', error);
-      res.status(500).json({
-        error: 'Failed to process CSV file',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      });
+      logger.error(`Error in streaming upload for job ${jobId}:`, error);
+      // Clean up job if there was an error
+      await database.updateJobStatus(jobId, 'failed');
+      throw error;
+    }
+  }
+
+  private async processCSVStreaming(jobId: string, filePath: string, urlColumn: string, columns: string[]): Promise<void> {
+    try {
+      logger.info(`Starting background streaming processing for job ${jobId}`);
+      
+      const { totalRows } = await this.csvService.parseCSVStreaming(
+        filePath, 
+        urlColumn, 
+        jobId,
+        (processed, total) => {
+          logger.debug(`Streaming progress for job ${jobId}: ${processed}/${total}`);
+        }
+      );
+
+      // Update job with actual row count
+      await database.updateJobStatus(jobId, 'pending', totalRows, 0);
+      
+      logger.info(`Completed streaming processing for job ${jobId}: ${totalRows} rows`);
+    } catch (error) {
+      logger.error(`Error in background streaming processing for job ${jobId}:`, error);
+      await database.updateJobStatus(jobId, 'failed');
     }
   }
 
@@ -177,32 +279,48 @@ export class UploadController {
         return;
       }
 
-      // Get URLs for this job
-      const urls = await database.getUrlsByJob(jobId);
-      const urlRecords = urls.map(url => ({
-        id: url.id,
-        url: url.url
-      }));
+      // Update job's content type
+      await database.updateJobContentType(jobId, contentType);
+
+      // Get total URL count
+      const totalUrls = await database.getUrlCountByJob(jobId);
+      
+      if (totalUrls === 0) {
+        res.status(400).json({ error: 'No URLs found for this job' });
+        return;
+      }
 
       // Update job status to processing and reset counters
       await database.updateJobStatus(jobId, 'processing', 0, 0);
 
       // Reset all URL statuses to pending for this job
-      for (const urlRecord of urlRecords) {
-        await database.updateUrlStatus(urlRecord.id, 'pending', undefined, undefined, 0);
-      }
+      await database.resetUrlStatusesForJob(jobId);
 
       // Emit job start event
-      progressEmitter.emitJobStart(jobId, urlRecords.length);
+      progressEmitter.emitJobStart(jobId, totalUrls);
 
-      // Add chunked jobs to the queue
-      await addChunkedJobs(jobId, urlRecords, contentType as ContentType);
+      // For large jobs, use streaming processing
+      if (totalUrls > config.batchSize) {
+        await this.startStreamingProcessing(jobId, contentType as ContentType, totalUrls);
+      } else {
+        // For small jobs, use the original method
+        const urls = await database.getUrlsByJob(jobId);
+        const urlRecords = urls.map(url => ({
+          id: url.id,
+          url: url.url
+        }));
 
-      logger.info(`Started processing job ${jobId} with ${urlRecords.length} URLs`);
+        // Add chunked jobs to the queue
+        await addChunkedJobs(jobId, urlRecords, contentType as ContentType);
+      }
+
+      logger.info(`Started processing job ${jobId} with ${totalUrls} URLs`);
 
       res.json({
         jobId,
         message: 'Processing started',
+        totalUrls,
+        streaming: totalUrls > config.batchSize
       });
     } catch (error) {
       logger.error('Start processing error:', error);
@@ -211,6 +329,50 @@ export class UploadController {
         details: error instanceof Error ? error.message : 'Unknown error',
       });
     }
+  }
+
+  private async startStreamingProcessing(jobId: string, contentType: ContentType, totalUrls: number): Promise<void> {
+    logger.info(`Starting streaming processing for job ${jobId} with ${totalUrls} URLs`);
+    
+    const batchSize = config.batchSize;
+    let offset = 0;
+    let processedBatches = 0;
+
+    while (offset < totalUrls) {
+      // Check if job was cancelled
+      const job = await database.getJob(jobId);
+      if (!job || job.status === 'stopped') {
+        logger.info(`Job ${jobId} was cancelled, stopping streaming processing`);
+        break;
+      }
+
+      // Get batch of URLs
+      const urlBatch = await database.getUrlsByJobPaginated(jobId, offset, batchSize);
+      
+      if (urlBatch.length === 0) {
+        break;
+      }
+
+      const urlRecords = urlBatch.map(url => ({
+        id: url.id,
+        url: url.url
+      }));
+
+      // Add chunked jobs to the queue
+      await addChunkedJobs(jobId, urlRecords, contentType);
+
+      processedBatches++;
+      offset += batchSize;
+
+      logger.debug(`Added batch ${processedBatches} for job ${jobId}: ${urlRecords.length} URLs (${offset}/${totalUrls})`);
+
+      // Small delay to prevent overwhelming the queue
+      if (offset < totalUrls) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
+
+    logger.info(`Completed streaming processing setup for job ${jobId}: ${processedBatches} batches added to queue`);
   }
 
   async getJobStatus(req: Request, res: Response): Promise<void> {
@@ -306,7 +468,7 @@ export class UploadController {
       }
 
       // Update job status to canceled
-      await database.updateJobStatus(jobId, 'canceled');
+      await database.updateJobStatus(jobId, 'stopped');
 
       logger.info(`Job ${jobId} cancelled successfully`);
 

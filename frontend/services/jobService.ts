@@ -79,6 +79,35 @@ export class JobService {
     return response.blob()
   }
 
+  // Download original uploaded file
+  async downloadOriginalFile(jobId: string): Promise<Blob> {
+    const response = await fetch(`${apiClient['baseURL']}/api/jobs/${jobId}/download-original`)
+    
+    if (!response.ok) {
+      throw new ApiError(
+        `Failed to download original file: ${response.statusText}`,
+        response.status
+      )
+    }
+    
+    return response.blob()
+  }
+
+  // Stop job
+  async stopJob(jobId: string): Promise<{ message: string }> {
+    return await apiClient.post<{ message: string }>(`/api/jobs/${jobId}/stop`)
+  }
+
+  // Resume job
+  async resumeJob(jobId: string): Promise<{ message: string }> {
+    return await apiClient.post<{ message: string }>(`/api/jobs/${jobId}/resume`)
+  }
+
+  // Delete job
+  async deleteJob(jobId: string): Promise<{ message: string }> {
+    return await apiClient.delete<{ message: string }>(`/api/jobs/${jobId}`)
+  }
+
   // Retry failed URLs
   async retryFailedUrls(
     jobId: string,
@@ -90,10 +119,6 @@ export class JobService {
     )
   }
 
-  // Cancel a job
-  async cancelJob(jobId: string): Promise<{ message: string }> {
-    return await apiClient.post<{ message: string }>(`/api/jobs/${jobId}/cancel`)
-  }
 
   // Get job status
   async getJobStatus(jobId: string): Promise<{

@@ -188,7 +188,18 @@ export function CSVPreview({
         {/* Main Content Section */}
         <div className="p-0">
           <div className="overflow-x-auto">
-            <Table aria-label="CSV data preview table">
+            <Table 
+              aria-label="CSV data preview table"
+              classNames={{
+                wrapper: "",
+                table: "",
+                thead: "bg-default-100 dark:bg-default-800",
+                tbody: "divide-y divide-default-100 dark:divide-default-800",
+                tr: "hover:bg-default-100 dark:hover:bg-default-700 transition-colors duration-200",
+                th: "bg-default-100 dark:bg-default-800 text-default-700 dark:text-default-100 font-semibold py-2",
+                td: "py-2 text-default-900 dark:text-default-100"
+              }}
+            >
               <TableHeader>
                 {[
                   <TableColumn key="index">#</TableColumn>,
@@ -199,7 +210,10 @@ export function CSVPreview({
               </TableHeader>
               <TableBody>
                 {displayData.map((row, index) => (
-                  <TableRow key={index}>
+                  <TableRow 
+                    key={index}
+                    className="hover:bg-default-100 dark:hover:bg-default-700 transition-colors duration-200"
+                  >
                     {[
                       <TableCell key="index">
                         <span className="font-medium">{index + 1}</span>

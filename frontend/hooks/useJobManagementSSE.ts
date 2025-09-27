@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 
 interface JobProgressUpdate {
   jobId: string
-  status: 'processing' | 'completed' | 'failed'
+  status: 'processing' | 'completed' | 'failed' | 'stopped'
   progress: {
     total: number
     completed: number
@@ -16,6 +16,7 @@ interface JobManagementSSE {
   jobProgress: Record<string, JobProgressUpdate>
   isConnected: boolean
   error: string | null
+  refreshConnections: () => void
 }
 
 export function useJobManagementSSE(jobIds: string[]): JobManagementSSE {
@@ -38,10 +39,20 @@ export function useJobManagementSSE(jobIds: string[]): JobManagementSSE {
     setIsConnected(false)
   }, [])
 
-  const createConnection = useCallback((jobId: string) => {
-    if (eventSourcesRef.current.has(jobId)) {
+  const createConnection = useCallback((jobId: string, forceReconnect = false) => {
+    if (eventSourcesRef.current.has(jobId) && !forceReconnect) {
       console.log(`SSE connection already exists for job ${jobId}`)
       return
+    }
+
+    // Close existing connection if force reconnecting
+    if (forceReconnect && eventSourcesRef.current.has(jobId)) {
+      console.log(`Force reconnecting SSE for job ${jobId}`)
+      const existingConnection = eventSourcesRef.current.get(jobId)
+      if (existingConnection) {
+        existingConnection.close()
+        eventSourcesRef.current.delete(jobId)
+      }
     }
 
     console.log(`Creating SSE connection for job ${jobId}`)
@@ -56,6 +67,8 @@ export function useJobManagementSSE(jobIds: string[]): JobManagementSSE {
     eventSource.onmessage = (event) => {
       try {
         const update: JobProgressUpdate = JSON.parse(event.data)
+        console.log(`SSE update received for job ${update.jobId}:`, update)
+        
         setJobProgress(prev => ({
           ...prev,
           [update.jobId]: update
@@ -125,9 +138,17 @@ export function useJobManagementSSE(jobIds: string[]): JobManagementSSE {
     }
   }, [closeAllConnections])
 
+  const refreshConnections = useCallback(() => {
+    console.log('Refreshing all SSE connections')
+    jobIds.forEach(jobId => {
+      createConnection(jobId, true) // Force reconnect
+    })
+  }, [jobIds, createConnection])
+
   return {
     jobProgress,
     isConnected,
-    error
+    error,
+    refreshConnections
   }
 }

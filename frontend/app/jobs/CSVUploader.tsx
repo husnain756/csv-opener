@@ -171,7 +171,7 @@ export function CSVUploader({ onUpload }: CSVUploaderProps) {
   }, [handleFile])
 
   return (
-    <Card className="w-full max-w-2xl mx-auto card-bubbly">
+    <Card className="w-full max-w-2xl mx-auto card-bubbly my-8">
       <CardBody className="p-8">
         <div className="text-center space-y-6">
           <div className="flex justify-center">

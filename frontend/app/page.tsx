@@ -94,7 +94,7 @@ export default function Home() {
       // Step 1: Upload CSV file
       const csvContent = generateCSVContent(csvData)
       const blob = new Blob([csvContent], { type: 'text/csv' })
-      const file = new File([blob], 'uploaded.csv', { type: 'text/csv' })
+      const file = new File([blob], fileName || 'uploaded.csv', { type: 'text/csv' })
       
       console.log('Uploading CSV file...')
       const uploadResponse = await jobService.uploadAndProcessCSV(file, contentType)
@@ -228,52 +228,11 @@ export default function Home() {
     }
   }
 
-  const getStepIcon = (step: string) => {
-    switch (step) {
-      case 'upload': return <Upload className="w-5 h-5" />
-      case 'preview': return <FileText className="w-5 h-5" />
-      case 'processing': return <Play className="w-5 h-5" />
-      case 'results': return <Download className="w-5 h-5" />
-      default: return <Upload className="w-5 h-5" />
-    }
-  }
-
-  const getStepColor = (step: string) => {
-    const currentStepIndex = ['upload', 'preview', 'processing', 'results'].indexOf(currentStep)
-    const stepIndex = ['upload', 'preview', 'processing', 'results'].indexOf(step)
-    
-    if (stepIndex < currentStepIndex) return 'success'
-    if (stepIndex === currentStepIndex) return 'primary'
-    return 'default'
-  }
 
   return (
     <div>
       {/* Main Content */}
       <main className="container mx-auto px-8 py-8">
-        {/* Progress Steps */}
-        <Card className="mb-8 card-bubbly">
-          <CardBody className="py-4 px-8">
-            <div className="flex items-center justify-between">
-              {['upload', 'preview', 'processing', 'results'].map((step, index) => (
-                <div key={step} className="flex items-center xxx">
-                  <Chip
-                    startContent={getStepIcon(step)}
-                    color={getStepColor(step)}
-                    variant={currentStep === step ? 'solid' : 'flat'}
-                    className="capitalize font-medium rounded-bubbly"
-                    size="lg"
-                  >
-                    {step}
-                  </Chip>
-                  {index < 3 && (
-                    <div className="w-12 h-0.5 bg-divider/50 mx-4" />
-                  )}
-                </div>
-              ))}
-            </div>
-          </CardBody>
-        </Card>
 
         {/* Error Display */}
         {error && (

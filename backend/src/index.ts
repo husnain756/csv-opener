@@ -10,6 +10,7 @@ import { csvProcessingQueue, csvProcessingWorker } from './services/queue';
 import { database } from './services/database';
 import { errorHandler } from './middleware/errorHandler';
 import { rateLimiter } from './middleware/rateLimiter';
+import { memoryMonitor } from './utils/memoryMonitor';
 
 // Import routes
 import uploadRoutes from './routes/upload';
@@ -69,6 +70,9 @@ const gracefulShutdown = async () => {
     logger.info('HTTP server closed');
     
     try {
+      // Stop memory monitoring
+      memoryMonitor.stopMonitoring();
+      
       await csvProcessingWorker.close();
       await csvProcessingQueue.close();
       await database.cleanup();
@@ -93,6 +97,10 @@ server.listen(PORT, async () => {
   logger.info(`🔗 Redis URL: ${config.redisUrl}`);
   logger.info(`🗄️ Database URL: ${config.databaseUrl}`);
   logger.info(`🤖 OpenAI Dummy Mode: ${process.env.OPENAI_DUMMY_MODE === 'true' || !process.env.OPENAI_API_KEY ? 'Enabled' : 'Disabled'}`);
+  
+  // Start memory monitoring
+  memoryMonitor.startMonitoring(30000); // Check every 30 seconds
+  logger.info(`🧠 Memory monitoring started (limit: ${config.memoryLimitMB}MB)`);
 });
 
 export default app;

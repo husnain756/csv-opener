@@ -21,6 +21,10 @@ import {
   ModalHeader,
   ModalBody,
   ModalFooter,
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
   useDisclosure
 } from '@nextui-org/react'
 import { 
@@ -32,7 +36,11 @@ import {
   AlertCircle,
   Play,
   ArrowLeft,
-  Eye
+  Eye,
+  MoreVertical,
+  X,
+  Square,
+  Trash2
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { jobService } from '@/services'
@@ -41,7 +49,7 @@ import { useJobManagementSSE } from '@/hooks'
 interface Job {
   id: string
   file_name: string
-  status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled'
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'stopped'
   total_rows: number
   processed_rows: number
   failed_rows: number
@@ -56,14 +64,12 @@ export default function JobsPage() {
   const [jobs, setJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const { isOpen: isRetryModalOpen, onOpen: onRetryModalOpen, onClose: onRetryModalClose } = useDisclosure()
-  const [selectedJob, setSelectedJob] = useState<Job | null>(null)
 
   // Get job IDs for SSE connections (memoized to prevent unnecessary re-renders)
   const jobIds = useMemo(() => jobs.map(job => job.id), [jobs])
   
   // Use SSE for real-time updates
-  const { jobProgress, isConnected, error: sseError } = useJobManagementSSE(jobIds)
+  const { jobProgress, isConnected, error: sseError, refreshConnections } = useJobManagementSSE(jobIds)
 
   useEffect(() => {
     fetchJobs()
@@ -76,12 +82,24 @@ export default function JobsPage() {
         prevJobs.map(job => {
           const progress = jobProgress[job.id]
           if (progress) {
-            return {
-              ...job,
-              status: progress.status,
-              processed_rows: progress.progress.completed,
-              failed_rows: progress.progress.failed,
-              progress: `${progress.progress.completed}/${progress.progress.total}`
+            // Only update if the SSE data is newer or if the job is still processing
+            // For stopped jobs, we should trust the database values from fetchJobs()
+            if (progress.status === 'processing' || progress.status === 'completed' || progress.status === 'failed') {
+              console.log(`Updating job ${job.id} with SSE data:`, progress)
+              return {
+                ...job,
+                status: progress.status,
+                processed_rows: progress.progress.completed,
+                failed_rows: progress.progress.failed,
+                progress: `${progress.progress.completed}/${progress.progress.total}`
+              }
+            } else if (progress.status === 'stopped') {
+              // For stopped jobs, only update the status, keep the existing progress values
+              console.log(`Updating job ${job.id} status to stopped, keeping existing progress values`)
+              return {
+                ...job,
+                status: progress.status
+              }
             }
           }
           return job
@@ -111,7 +129,7 @@ export default function JobsPage() {
       case 'processing': return <RefreshCw className="w-4 h-4 animate-spin text-primary-600" />
       case 'completed': return <CheckCircle className="w-4 h-4 text-success" />
       case 'failed': return <XCircle className="w-4 h-4 text-danger" />
-      case 'cancelled': return <AlertCircle className="w-4 h-4 text-warning" />
+      case 'stopped': return <AlertCircle className="w-4 h-4 text-warning" />
       default: return <Clock className="w-4 h-4 text-default-500" />
     }
   }
@@ -122,25 +140,11 @@ export default function JobsPage() {
       case 'processing': return 'primary'
       case 'completed': return 'success'
       case 'failed': return 'danger'
-      case 'cancelled': return 'warning'
+      case 'stopped': return 'warning'
       default: return 'default'
     }
   }
 
-  const handleRetryJob = async (job: Job) => {
-    try {
-      const response = await fetch(`/api/jobs/${job.id}/retry`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      })
-      
-      if (response.ok) {
-        await fetchJobs() // Refresh the list
-      }
-    } catch (err) {
-      setError('Failed to retry job')
-    }
-  }
 
   // Remove individual job page - no longer needed
 
@@ -158,9 +162,101 @@ export default function JobsPage() {
     }
   }
 
+  const handleDownloadOriginal = async (job: Job) => {
+    try {
+      const blob = await jobService.downloadOriginalFile(job.id)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = job.file_name
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      setError('Failed to download original file')
+    }
+  }
+
   const progressPercentage = (job: Job) => {
     if (job.total_rows === 0) return 0
     return Math.round((job.processed_rows / job.total_rows) * 100)
+  }
+
+  const shouldEnableRetry = (job: Job) => {
+    // Enable retry only if there are failed URLs (not all URLs processed successfully)
+    return job.failed_rows > 0
+  }
+
+  const shouldEnableStop = (job: Job) => {
+    // Enable stop only for processing jobs
+    return job.status === 'processing' || job.status === 'pending'
+  }
+
+  const shouldEnableResume = (job: Job) => {
+    // Enable resume only for stopped jobs
+    return job.status === 'stopped'
+  }
+
+  const shouldEnableDelete = (job: Job) => {
+    // Enable delete for completed, failed, or stopped jobs (not processing)
+    return job.status === 'completed' || job.status === 'failed' || job.status === 'stopped'
+  }
+
+  const handleStopJob = async (job: Job) => {
+    try {
+      await jobService.stopJob(job.id)
+      
+      // Refresh SSE connections to ensure real-time updates work
+      refreshConnections()
+      
+      // Small delay to ensure backend has updated the status
+      setTimeout(async () => {
+        await fetchJobs() // Refresh the list
+      }, 100)
+      setError(null)
+    } catch (err) {
+      setError('Failed to stop job')
+    }
+  }
+
+  const handleResumeJob = async (job: Job) => {
+    try {
+      await jobService.resumeJob(job.id)
+      
+      // Refresh SSE connections to ensure real-time updates work
+      refreshConnections()
+      
+      // Small delay to ensure backend has updated the status
+      setTimeout(async () => {
+        await fetchJobs() // Refresh the list
+      }, 100)
+      setError(null)
+    } catch (err) {
+      setError('Failed to resume job')
+    }
+  }
+
+  const handleDeleteJob = async (job: Job) => {
+    if (!confirm(`Are you sure you want to delete job "${job.file_name}"? This will permanently remove the job, all its URLs, and the CSV files.`)) {
+      return
+    }
+    
+    try {
+      await jobService.deleteJob(job.id)
+      await fetchJobs() // Refresh the list
+      setError(null)
+    } catch (err) {
+      setError('Failed to delete job')
+    }
+  }
+
+  const handleRetryJob = async (job: Job) => {
+    try {
+      await jobService.retryFailedUrls(job.id)
+      await fetchJobs() // Refresh the list
+      setError(null)
+    } catch (err) {
+      setError('Failed to retry job')
+    }
   }
 
   if (loading) {
@@ -221,7 +317,7 @@ export default function JobsPage() {
             <div className="flex items-center justify-between w-full p-4">
               <div className="flex items-center gap-3">
                 <h2 className="text-xl font-semibold">All Jobs</h2>
-                {isConnected && (
+                {/* {isConnected && (
                   <Chip
                     size="sm"
                     color="success"
@@ -250,7 +346,7 @@ export default function JobsPage() {
                   >
                     Connecting...
                   </Chip>
-                )}
+                )} */}
               </div>
               <Button
                 color="primary"
@@ -306,18 +402,16 @@ export default function JobsPage() {
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <span className="font-medium">{job.file_name}</span>
-                            {job.status === 'completed' && (
-                              <Button
-                                isIconOnly
-                                size="sm"
-                                variant="ghost"
-                                onPress={() => handleDownloadResults(job)}
-                                className="hover:bg-secondary/50 rounded-bubbly"
-                                aria-label={`Download results for ${job.file_name}`}
-                              >
-                                <Download className="w-4 h-4" />
-                              </Button>
-                            )}
+                            <Button
+                              isIconOnly
+                              size="sm"
+                              variant="ghost"
+                              onPress={() => handleDownloadOriginal(job)}
+                              className="hover:bg-secondary/50 rounded-bubbly"
+                              aria-label={`Download original file ${job.file_name}`}
+                            >
+                              <Download className="w-4 h-4" />
+                            </Button>
                           </div>
                         </TableCell>
                         <TableCell>
@@ -334,7 +428,7 @@ export default function JobsPage() {
                               </span>
                             </div>
                             {job.status !== 'completed' && (
-                              <div className="relative mt-2">
+                              <div className="relative mt-2 pr-2">
                                 <div className="w-full bg-gradient-to-br from-primary-100 to-primary-300 dark:from-primary-900/30 dark:to-primary-600/30 rounded-bubbly h-3 shadow-bubbly">
                                   <div 
                                     className={`h-3 rounded-bubbly transition-all duration-500 ${
@@ -360,34 +454,87 @@ export default function JobsPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              startContent={<Eye className="w-4 h-4" />}
-                              onPress={() => router.push(`/jobs/${job.id}`)}
-                              className="hover:bg-secondary/50 rounded-bubbly"
-                              aria-label={`View details for ${job.file_name}`}
+                          <Dropdown>
+                            <div className="flex justify-center items-center h-full">
+                              <DropdownTrigger>
+                                <Button
+                                  isIconOnly
+                                  size="sm"
+                                  variant="ghost"
+                                  className="hover:bg-default-100 dark:hover:bg-default-700 rounded-bubbly transition-colors duration-200"
+                                  aria-label="Actions menu"
+                                >
+                                  <MoreVertical className="w-4 h-4 text-default-600" />
+                                </Button>
+                              </DropdownTrigger>
+                            </div>
+                            <DropdownMenu 
+                              aria-label="Job actions"
+                              classNames={{
+                                base: "bg-background border border-divider shadow-lg rounded-lg",
+                                list: "py-2"
+                              }}
                             >
-                              Details
-                            </Button>
-                            {job.status === 'failed' && (
-                              <Button
-                                size="sm"
-                                color="warning"
-                                variant="ghost"
-                                startContent={<Play className="w-4 h-4" />}
-                                onPress={() => {
-                                  setSelectedJob(job)
-                                  onRetryModalOpen()
-                                }}
-                                className="hover:bg-warning/10 rounded-bubbly"
-                                aria-label={`Retry job ${job.file_name}`}
+                              <DropdownItem
+                                key="details"
+                                startContent={<Eye className="w-4 h-4 text-default-600" />}
+                                onPress={() => router.push(`/jobs/${job.id}`)}
+                                className="px-4 py-3 hover:bg-default-100 dark:hover:bg-default-700 transition-colors duration-200"
                               >
-                                Retry
-                              </Button>
-                            )}
-                          </div>
+                                <span className="font-medium text-default-900 dark:text-default-100">Details</span>
+                              </DropdownItem>
+                              {job.status === 'completed' ? (
+                                <DropdownItem
+                                  key="download-results"
+                                  startContent={<Download className="w-4 h-4 text-primary" />}
+                                  onPress={() => handleDownloadResults(job)}
+                                  className="px-4 py-3 hover:bg-default-100 dark:hover:bg-default-700 transition-colors duration-200"
+                                >
+                                  <span className="font-medium text-default-900 dark:text-default-100">Download Results</span>
+                                </DropdownItem>
+                              ) : null}
+                              {shouldEnableStop(job) ? (
+                                <DropdownItem
+                                  key="stop"
+                                  startContent={<Square className="w-4 h-4 text-warning" />}
+                                  onPress={() => handleStopJob(job)}
+                                  className="px-4 py-3 hover:bg-warning/10 text-warning transition-colors duration-200"
+                                >
+                                  <span className="font-medium">Stop</span>
+                                </DropdownItem>
+                              ) : null}
+                              {shouldEnableResume(job) ? (
+                                <DropdownItem
+                                  key="resume"
+                                  startContent={<Play className="w-4 h-4 text-success" />}
+                                  onPress={() => handleResumeJob(job)}
+                                  className="px-4 py-3 hover:bg-success/10 text-success transition-colors duration-200"
+                                >
+                                  <span className="font-medium">Resume</span>
+                                </DropdownItem>
+                              ) : null}
+                              {shouldEnableDelete(job) ? (
+                                <DropdownItem
+                                  key="delete"
+                                  startContent={<Trash2 className="w-4 h-4 text-danger" />}
+                                  onPress={() => handleDeleteJob(job)}
+                                  className="px-4 py-3 hover:bg-danger/10 text-danger transition-colors duration-200"
+                                >
+                                  <span className="font-medium">Delete</span>
+                                </DropdownItem>
+                              ) : null}
+                              {shouldEnableRetry(job) ? (
+                                <DropdownItem
+                                  key="retry"
+                                  startContent={<Play className="w-4 h-4 text-warning" />}
+                                  onPress={() => handleRetryJob(job)}
+                                  className="px-4 py-3 hover:bg-warning/10 text-warning transition-colors duration-200"
+                                >
+                                  <span className="font-medium">Retry</span>
+                                </DropdownItem>
+                              ) : null}
+                            </DropdownMenu>
+                          </Dropdown>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -399,39 +546,6 @@ export default function JobsPage() {
         </Card>
       </main>
 
-      {/* Retry Modal */}
-      <Modal isOpen={isRetryModalOpen} onClose={onRetryModalClose}>
-        <ModalContent>
-          <ModalHeader>Retry Job</ModalHeader>
-          <ModalBody>
-            <p className="text-default-600">
-              Are you sure you want to retry the job "{selectedJob?.file_name}"? 
-              This will reprocess all failed URLs.
-            </p>
-          </ModalBody>
-          <ModalFooter>
-            <Button 
-              variant="ghost" 
-              onPress={onRetryModalClose}
-              className="hover:bg-secondary/50 rounded-bubbly"
-            >
-              Cancel
-            </Button>
-            <Button 
-              color="warning" 
-              onPress={() => {
-                if (selectedJob) {
-                  handleRetryJob(selectedJob)
-                  onRetryModalClose()
-                }
-              }}
-              className="rounded-bubbly font-medium shadow-bubbly hover:shadow-bubbly-lg dark:shadow-bubbly-dark dark:hover:shadow-bubbly-lg-dark transition-all duration-300"
-            >
-              Retry Job
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
     </div>
   )
 }

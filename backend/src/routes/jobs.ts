@@ -3,6 +3,7 @@ import { database } from '../services/database';
 import { logger } from '../utils/logger';
 import { pollingRateLimiter } from '../middleware/rateLimiter';
 import { progressEmitter, JobProgressUpdate } from '../services/progressEmitter';
+import { stopJob, resumeJob, cleanupJob } from '../services/queue';
 
 const router = Router();
 
@@ -63,6 +64,213 @@ router.get('/:jobId/results', async (req, res) => {
   }
 });
 
+// Download job results
+router.get('/:jobId/download', async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    const job = await database.getJob(jobId);
+
+    if (!job) {
+      return res.status(404).json({ error: 'Job not found' });
+    }
+
+    if (job.status !== 'completed') {
+      return res.status(400).json({ error: 'Job is not completed yet' });
+    }
+
+    // Get results from database
+    const results = await database.getJobResults(jobId);
+    
+    // Generate CSV content
+    const csvContent = generateResultsCSV(results.urls);
+    
+    // Set headers for CSV download
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="${job.file_name}_results.csv"`);
+    return res.send(csvContent);
+  } catch (error) {
+    logger.error('Download results error:', error);
+    return res.status(500).json({
+      error: 'Failed to download results',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+// Download original uploaded file
+router.get('/:jobId/download-original', async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    const job = await database.getJob(jobId);
+
+    if (!job) {
+      return res.status(404).json({ error: 'Job not found' });
+    }
+
+    // Check if original file exists
+    const fs = require('fs');
+    const path = require('path');
+    
+    if (!fs.existsSync(job.file_path)) {
+      return res.status(404).json({ error: 'Original file not found' });
+    }
+
+    // Set headers for file download
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="${job.file_name}"`);
+    
+    // Stream the original file
+    return res.sendFile(path.resolve(job.file_path));
+  } catch (error) {
+    logger.error('Download original file error:', error);
+    return res.status(500).json({
+      error: 'Failed to download original file',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+// Cancel job
+router.post('/:jobId/stop', async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    const job = await database.getJob(jobId);
+
+    if (!job) {
+      return res.status(404).json({ error: 'Job not found' });
+    }
+
+    if (job.status === 'completed') {
+      return res.status(400).json({ error: 'Cannot stop completed job' });
+    }
+
+    if (job.status === 'stopped') {
+      return res.status(400).json({ error: 'Job is already stopped' });
+    }
+
+    // Stop the job using the queue service
+    const stopped = await stopJob(jobId);
+
+    if (!stopped) {
+      return res.status(500).json({ error: 'Failed to stop job' });
+    }
+
+    logger.info(`Job ${jobId} stopped successfully`);
+
+    return res.json({ message: 'Job stopped successfully' });
+  } catch (error) {
+    logger.error('Stop job error:', error);
+    return res.status(500).json({
+      error: 'Failed to stop job',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+router.post('/:jobId/resume', async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    const job = await database.getJob(jobId);
+
+    if (!job) {
+      return res.status(404).json({ error: 'Job not found' });
+    }
+
+    if (job.status !== 'stopped') {
+      return res.status(400).json({ error: 'Can only resume stopped jobs' });
+    }
+
+    // Resume the job using the queue service
+    const resumed = await resumeJob(jobId);
+
+    if (!resumed) {
+      return res.status(500).json({ error: 'Failed to resume job' });
+    }
+
+    logger.info(`Job ${jobId} resumed successfully`);
+
+    return res.json({ message: 'Job resumed successfully' });
+  } catch (error) {
+    logger.error('Resume job error:', error);
+    return res.status(500).json({
+      error: 'Failed to resume job',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+router.delete('/:jobId', async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    const job = await database.getJob(jobId);
+
+    if (!job) {
+      return res.status(404).json({ error: 'Job not found' });
+    }
+
+    if (job.status === 'processing') {
+      return res.status(400).json({ error: 'Cannot delete processing job. Stop it first.' });
+    }
+
+    // Clean up any remaining queue chunks for this job
+    await cleanupJob(jobId);
+
+    // Delete the job and all its URLs
+    await database.deleteJob(jobId);
+
+    // Delete the CSV files
+    const fs = require('fs');
+    const path = require('path');
+    
+    try {
+      if (fs.existsSync(job.file_path)) {
+        fs.unlinkSync(job.file_path);
+        logger.info(`Deleted original file: ${job.file_path}`);
+      }
+    } catch (fileError) {
+      logger.warn(`Could not delete original file ${job.file_path}:`, fileError);
+    }
+
+    // Try to delete the processed file if it exists
+    const processedFilePath = job.file_path.replace('.csv', '-processed.csv');
+    try {
+      if (fs.existsSync(processedFilePath)) {
+        fs.unlinkSync(processedFilePath);
+        logger.info(`Deleted processed file: ${processedFilePath}`);
+      }
+    } catch (fileError) {
+      logger.warn(`Could not delete processed file ${processedFilePath}:`, fileError);
+    }
+
+    logger.info(`Job ${jobId} deleted successfully`);
+
+    return res.json({ message: 'Job deleted successfully' });
+  } catch (error) {
+    logger.error('Delete job error:', error);
+    return res.status(500).json({
+      error: 'Failed to delete job',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+// Helper function to generate CSV content
+function generateResultsCSV(urls: Array<{ url: string; status: string; opener?: string; error?: string }>): string {
+  const headers = ['URL', 'Status', 'Generated Opener', 'Error'];
+  const rows = urls.map(url => [
+    url.url,
+    url.status,
+    url.opener || '',
+    url.error || ''
+  ]);
+  
+  const csvRows = [headers, ...rows].map(row => 
+    row.map(field => `"${(field || '').toString().replace(/"/g, '""')}"`).join(',')
+  );
+  
+  return csvRows.join('\n');
+}
+
 // Retry failed URLs
 router.post('/:jobId/retry', async (req, res) => {
   try {
@@ -106,6 +314,7 @@ router.get('/', async (req, res) => {
     res.status(500).json({ error: 'Failed to get jobs' });
   }
 });
+
 
 // SSE endpoint for real-time job progress
 router.get('/:jobId/stream', async (req, res): Promise<void> => {
@@ -186,7 +395,7 @@ router.get('/:jobId/stream', async (req, res): Promise<void> => {
     const checkCompletion = setInterval(async () => {
       try {
         const currentJob = await database.getJob(jobId);
-        if (currentJob && ['completed', 'failed', 'cancelled'].includes(currentJob.status)) {
+        if (currentJob && ['completed', 'failed', 'stopped'].includes(currentJob.status)) {
           clearInterval(keepAlive);
           clearInterval(checkCompletion);
           progressEmitter.removeListener(`job-${jobId}`, progressHandler);

@@ -8,10 +8,9 @@ A web application that generates professional outreach openers from CSV files co
 - 🎯 URL column selection and validation
 - 🤖 AI-powered opener generation (OpenAI or Hugging Face)
 - 📊 Real-time progress tracking
-- 🔄 Automatic retry logic for failed requests
+- 🔄 Stop/Resume and Retry logic for failed requests
 - 📤 CSV export with results
 - 🌙 Dark/Light theme toggle
-- ⚡ Concurrent processing for performance
 
 ## Project Structure
 

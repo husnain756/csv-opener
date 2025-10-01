@@ -4,6 +4,7 @@ import { logger } from '../utils/logger';
 import { pollingRateLimiter } from '../middleware/rateLimiter';
 import { progressEmitter, JobProgressUpdate } from '../services/progressEmitter';
 import { stopJob, resumeJob, cleanupJob } from '../services/queue';
+import { AIServiceFactory } from '../services/aiServiceFactory';
 
 const router = Router();
 
@@ -427,6 +428,45 @@ router.get('/:jobId/stream', async (req, res): Promise<void> => {
   } catch (error) {
     logger.error(`SSE setup error for job ${jobId}:`, error);
     res.status(500).json({ error: 'Failed to setup SSE connection' });
+  }
+});
+
+// Get AI service status
+router.get('/ai-service/status', async (req, res) => {
+  try {
+    const status = AIServiceFactory.getServiceStatus();
+    res.json({
+      success: true,
+      data: status
+    });
+  } catch (error) {
+    logger.error('Error getting AI service status:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to get AI service status' 
+    });
+  }
+});
+
+// Refresh AI service (useful for testing config changes)
+router.post('/ai-service/refresh', async (req, res) => {
+  try {
+    const service = AIServiceFactory.refreshService();
+    const status = AIServiceFactory.getServiceStatus();
+    
+    logger.info('AI service refreshed', { serviceType: status.currentType });
+    
+    res.json({
+      success: true,
+      message: 'AI service refreshed successfully',
+      data: status
+    });
+  } catch (error) {
+    logger.error('Error refreshing AI service:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to refresh AI service' 
+    });
   }
 });
 

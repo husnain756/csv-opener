@@ -1,6 +1,6 @@
 # CSV Opener Frontend
 
-A modern Next.js 14 application for processing CSV files and generating AI-powered outreach openers.
+A modern Next.js 14 application for processing CSV files and generating AI-powered outreach openers using OpenAI or Hugging Face services.
 
 ## Project Structure
 

@@ -1,0 +1,215 @@
+
+> csv-opener-backend@1.0.0 dev
+> nodemon src/index.ts
+
+[33m[nodemon] 3.1.10[39m
+[33m[nodemon] to restart at any time, enter `rs`[39m
+[33m[nodemon] watching path(s): *.*[39m
+[33m[nodemon] watching extensions: ts,json[39m
+[32m[nodemon] starting `ts-node src/index.ts`[39m
+12:30:02 [[32minfo[39m]: 🚀 Server running on port 3001 {"service":"csv-opener-backend"}
+12:30:02 [[32minfo[39m]: 📊 Environment: development {"service":"csv-opener-backend"}
+12:30:02 [[32minfo[39m]: 🔗 Redis URL: redis://localhost:6380 {"service":"csv-opener-backend"}
+12:30:02 [[32minfo[39m]: 🗄️ Database URL: postgresql://postgres:postgres@localhost:5432/csv_opener {"service":"csv-opener-backend"}
+12:30:02 [[32minfo[39m]: 🤖 OpenAI Dummy Mode: Disabled {"service":"csv-opener-backend"}
+12:30:02 [[32minfo[39m]: Memory monitoring started {"service":"csv-opener-backend"}
+12:30:02 [[32minfo[39m]: 🧠 Memory monitoring started (limit: 1000MB) {"service":"csv-opener-backend"}
+12:30:02 [[31merror[39m]: Failed to initialize database tables: Connection terminated due to connection timeout {"service":"csv-opener-backend","stack":"Error: Connection terminated due to connection timeout\n    at /var/www/html/practice/csv-opener/node_modules/pg-pool/index.js:45:11\n    at processTicksAndRejections (node:internal/process/task_queues:95:5)\n    at async DatabaseService.initializeTables (/var/www/html/practice/csv-opener/backend/src/services/database.ts:47:22)","cause":{}}
+Error: Connection terminated due to connection timeout
+    at /var/www/html/practice/csv-opener/node_modules/pg-pool/index.js:45:11
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async DatabaseService.initializeTables (/var/www/html/practice/csv-opener/backend/src/services/database.ts:47:22) {
+  [cause]: Error: Connection terminated unexpectedly
+      at Connection.<anonymous> (/var/www/html/practice/csv-opener/node_modules/pg/lib/client.js:136:73)
+      at Object.onceWrapper (node:events:631:28)
+      at Connection.emit (node:events:517:28)
+      at Connection.emit (node:domain:489:12)
+      at Socket.<anonymous> (/var/www/html/practice/csv-opener/node_modules/pg/lib/connection.js:62:12)
+      at Socket.emit (node:events:517:28)
+      at Socket.emit (node:domain:489:12)
+      at TCP.<anonymous> (node:net:350:12)
+}
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/index.ts`[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/index.ts`[39m
+Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:1817:16)
+    at listenInCluster (node:net:1865:12)
+    at Server.listen (node:net:1953:7)
+    at Object.<anonymous> (/var/www/html/practice/csv-opener/backend/src/index.ts:94:8)
+    at Module._compile (node:internal/modules/cjs/loader:1364:14)
+    at Module.m._compile (/var/www/html/practice/csv-opener/node_modules/ts-node/src/index.ts:1618:23)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1422:10)
+    at Object.require.extensions.<computed> [as .ts] (/var/www/html/practice/csv-opener/node_modules/ts-node/src/index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1203:32)
+    at Function.Module._load (node:internal/modules/cjs/loader:1019:12) {
+  code: 'EADDRINUSE',
+  errno: -98,
+  syscall: 'listen',
+  address: '::',
+  port: 3001
+}
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/index.ts`[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/index.ts`[39m
+Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:1817:16)
+    at listenInCluster (node:net:1865:12)
+    at Server.listen (node:net:1953:7)
+    at Object.<anonymous> (/var/www/html/practice/csv-opener/backend/src/index.ts:94:8)
+    at Module._compile (node:internal/modules/cjs/loader:1364:14)
+    at Module.m._compile (/var/www/html/practice/csv-opener/node_modules/ts-node/src/index.ts:1618:23)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1422:10)
+    at Object.require.extensions.<computed> [as .ts] (/var/www/html/practice/csv-opener/node_modules/ts-node/src/index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1203:32)
+    at Function.Module._load (node:internal/modules/cjs/loader:1019:12) {
+  code: 'EADDRINUSE',
+  errno: -98,
+  syscall: 'listen',
+  address: '::',
+  port: 3001
+}
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/index.ts`[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `ts-node src/index.ts`[39m
+12:41:16 [[32minfo[39m]: 🚀 Server running on port 3001 {"service":"csv-opener-backend"}
+12:41:16 [[32minfo[39m]: 📊 Environment: development {"service":"csv-opener-backend"}
+12:41:16 [[32minfo[39m]: 🔗 Redis URL: redis://localhost:6380 {"service":"csv-opener-backend"}
+12:41:16 [[32minfo[39m]: 🗄️ Database URL: postgresql://postgres:postgres@localhost:5432/csv_opener {"service":"csv-opener-backend"}
+12:41:16 [[32minfo[39m]: 🤖 OpenAI Dummy Mode: Disabled {"service":"csv-opener-backend"}
+12:41:16 [[32minfo[39m]: Memory monitoring started {"service":"csv-opener-backend"}
+12:41:16 [[32minfo[39m]: 🧠 Memory monitoring started (limit: 1000MB) {"service":"csv-opener-backend"}
+12:41:16 [[32minfo[39m]: Redis connected successfully {"service":"csv-opener-backend"}
+12:41:16 [[32minfo[39m]: CSV processing worker is ready and listening for jobs {"service":"csv-opener-backend"}
+12:41:16 [[32minfo[39m]: Redis ping successful {"service":"csv-opener-backend"}
+12:41:17 [[32minfo[39m]: Database tables initialized successfully {"service":"csv-opener-backend"}
+12:41:25 [[32minfo[39m]: Starting periodic queue cleanup {"service":"csv-opener-backend"}
+12:41:25 [[32minfo[39m]: Starting corrupted jobs cleanup {"service":"csv-opener-backend"}
+12:41:25 [[32minfo[39m]: Corrupted jobs cleanup: 0 corrupted jobs removed, 1 valid jobs found {"service":"csv-opener-backend"}
+12:41:25 [[32minfo[39m]: Orphaned jobs cleanup: 0 orphaned jobs removed {"service":"csv-opener-backend"}
+12:41:25 [[32minfo[39m]: Total cleanup completed: 0 bad jobs removed {"service":"csv-opener-backend"}
+12:41:25 [[32minfo[39m]: Job 6d565291-89fb-4928-8e4b-25eaea68321c is completed, cleaning up 1 remaining chunks {"service":"csv-opener-backend"}
+12:41:25 [[32minfo[39m]: Periodic cleanup completed: 1 chunks removed {"service":"csv-opener-backend"}
+12:41:32 [[32minfo[39m]: Received shutdown signal, closing server gracefully... {"service":"csv-opener-backend"}
+12:41:32 [[32minfo[39m]: HTTP server closed {"service":"csv-opener-backend"}
+12:41:32 [[32minfo[39m]: Memory monitoring stopped {"service":"csv-opener-backend"}
+/var/www/html/practice/csv-opener/node_modules/pg-protocol/src/parser.ts:369
+      name === 'notice' ? new NoticeMessage(length, messageValue) : new DatabaseError(messageValue, length, name)
+                                                                    ^
+error: terminating connection due to administrator command
+    at Parser.parseErrorMessage (/var/www/html/practice/csv-opener/node_modules/pg-protocol/src/parser.ts:369:69)
+    at Parser.handlePacket (/var/www/html/practice/csv-opener/node_modules/pg-protocol/src/parser.ts:187:21)
+    at Parser.parse (/var/www/html/practice/csv-opener/node_modules/pg-protocol/src/parser.ts:102:30)
+    at Socket.<anonymous> (/var/www/html/practice/csv-opener/node_modules/pg-protocol/src/index.ts:7:48)
+    at Socket.emit (node:events:517:28)
+    at Socket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:368:12)
+    at readableAddChunk (node:internal/streams/readable:341:9)
+    at Socket.Readable.push (node:internal/streams/readable:278:10)
+    at TCP.onStreamRead (node:internal/stream_base_commons:190:23) {
+  length: 116,
+  severity: 'FATAL',
+  code: '57P01',
+  detail: undefined,
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'postgres.c',
+  line: '3197',
+  routine: 'ProcessInterrupts',
+  client: Client {
+    _events: [Object: null prototype] { error: [Function (anonymous)] },
+    _eventsCount: 1,
+    _maxListeners: undefined,
+    connectionParameters: ConnectionParameters {
+      user: 'postgres',
+      database: 'csv_opener',
+      port: 5432,
+      host: 'localhost',
+      binary: false,
+      options: undefined,
+      ssl: false,
+      client_encoding: '',
+      replication: undefined,
+      isDomainSocket: false,
+      application_name: undefined,
+      fallback_application_name: undefined,
+      statement_timeout: false,
+      lock_timeout: false,
+      idle_in_transaction_session_timeout: false,
+      query_timeout: false,
+      connect_timeout: 10
+    },
+    user: 'postgres',
+    database: 'csv_opener',
+    port: 5432,
+    host: 'localhost',
+    replication: undefined,
+    _Promise: [Function: Promise],
+    _types: TypeOverrides { _types: [Object], text: {}, binary: {} },
+    _ending: true,
+    _ended: false,
+    _connecting: false,
+    _connected: true,
+    _connectionError: false,
+    _queryable: false,
+    enableChannelBinding: false,
+    connection: Connection {
+      _events: [Object: null prototype],
+      _eventsCount: 23,
+      _maxListeners: undefined,
+      stream: [Socket],
+      _keepAlive: false,
+      _keepAliveInitialDelayMillis: 0,
+      lastBuffer: false,
+      parsedStatements: {},
+      ssl: false,
+      _ending: true,
+      _emitMessage: false,
+      _connecting: true,
+      [Symbol(kCapture)]: false
+    },
+    queryQueue: [],
+    binary: false,
+    processID: 192687,
+    secretKey: 1899882275,
+    ssl: false,
+    _connectionTimeoutMillis: 10000,
+    _connectionCallback: null,
+    connectionTimeoutHandle: Timeout {
+      _idleTimeout: -1,
+      _idlePrev: null,
+      _idleNext: null,
+      _idleStart: 20515,
+      _onTimeout: null,
+      _timerArgs: undefined,
+      _repeat: null,
+      _destroyed: true,
+      [Symbol(refed)]: false,
+      [Symbol(kHasPrimitive)]: false,
+      [Symbol(asyncId)]: 11,
+      [Symbol(triggerId)]: 1
+    },
+    saslSession: null,
+    release: [Function (anonymous)],
+    activeQuery: null,
+    readyForQuery: true,
+    hasExecuted: true,
+    _poolUseCount: 3,
+    [Symbol(kCapture)]: false
+  }
+}

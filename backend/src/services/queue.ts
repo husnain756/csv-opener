@@ -3,7 +3,7 @@ import { redis } from './redis';
 import { config } from '../config';
 import { logger } from '../utils/logger';
 import { database } from './database';
-import { OpenAIService } from './openaiService';
+import { AIServiceFactory } from './aiServiceFactory';
 import { progressEmitter } from './progressEmitter';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -64,7 +64,7 @@ export const csvProcessingWorker = new Worker(
     
     logger.info(`Processing chunk ${chunk} for job ${jobId} with ${urls.length} URLs`);
     
-    const openaiService = new OpenAIService();
+    const aiService = AIServiceFactory.getService();
     let processedCount = 0;
     let failedCount = 0;
 
@@ -94,7 +94,7 @@ export const csvProcessingWorker = new Worker(
         await database.updateUrlStatus(urlRecord.id, 'processing');
 
         // Generate opener with retry logic
-        const result = await openaiService.generateOpenerWithRetry(
+        const result = await aiService.generateOpenerWithRetry(
           urlRecord.url,
           contentType,
           config.maxRetries
@@ -105,7 +105,7 @@ export const csvProcessingWorker = new Worker(
         await database.updateUrlStatus(
           urlRecord.id,
           'completed',
-          result.opener,
+          result, // HuggingFaceService returns string directly
           undefined,
           0
         );

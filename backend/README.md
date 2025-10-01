@@ -1,13 +1,13 @@
 # CSV Opener Backend
 
-A robust backend service for processing CSV files and generating professional outreach openers using OpenAI API with BullMQ for job queuing and PostgreSQL for data persistence.
+A robust backend service for processing CSV files and generating professional outreach openers using AI services (OpenAI or Hugging Face) with BullMQ for job queuing and PostgreSQL for data persistence.
 
 ## 🏗️ Architecture
 
 - **Express.js** - Web framework
 - **BullMQ** - Job queue with Redis
 - **PostgreSQL** - Database for job and URL tracking
-- **OpenAI API** - Content generation
+- **AI Services** - Content generation (OpenAI or Hugging Face)
 - **Multer** - File upload handling
 - **TypeScript** - Type safety
 
@@ -33,6 +33,9 @@ A robust backend service for processing CSV files and generating professional ou
    
    Update `.env` with your configuration:
    ```env
+   # AI Service Configuration
+   AI_SERVICE_TYPE=                    # 'openai', 'huggingface', or empty for auto-detection
+   
    # Database
    DATABASE_URL=postgresql://localhost:5432/csv_opener
    
@@ -42,6 +45,10 @@ A robust backend service for processing CSV files and generating professional ou
    # OpenAI (optional for dummy mode)
    OPENAI_API_KEY=your_api_key_here
    OPENAI_DUMMY_MODE=false
+   
+   # Hugging Face (optional for dummy mode)
+   HUGGINGFACE_API_KEY=your_api_key_here
+   HUGGINGFACE_DUMMY_MODE=false
    ```
 
 3. **Set up the database:**
@@ -96,6 +103,10 @@ A robust backend service for processing CSV files and generating professional ou
 - `GET /api/upload/:jobId/download` - Download results as CSV
 - `POST /api/upload/:jobId/cancel` - Cancel job
 
+### AI Service Management
+- `GET /api/jobs/ai-service/status` - Get current AI service status
+- `POST /api/jobs/ai-service/refresh` - Refresh AI service configuration
+
 ### Health Check
 - `GET /health` - Service health status
 
@@ -109,8 +120,11 @@ A robust backend service for processing CSV files and generating professional ou
 | `NODE_ENV` | Environment | development |
 | `DATABASE_URL` | PostgreSQL connection string | postgresql://localhost:5432/csv_opener |
 | `REDIS_URL` | Redis connection string | redis://localhost:6379 |
+| `AI_SERVICE_TYPE` | Force specific AI service ('openai', 'huggingface', or empty for auto) | - |
 | `OPENAI_API_KEY` | OpenAI API key | - |
-| `OPENAI_DUMMY_MODE` | Enable dummy mode for testing | false |
+| `OPENAI_DUMMY_MODE` | Enable OpenAI dummy mode for testing | false |
+| `HUGGINGFACE_API_KEY` | Hugging Face API key | - |
+| `HUGGINGFACE_DUMMY_MODE` | Enable Hugging Face dummy mode for testing | false |
 | `MAX_FILE_SIZE` | Max upload size in bytes | 10485760 (10MB) |
 | `UPLOAD_DIR` | File upload directory | ./uploads |
 | `MAX_CONCURRENT_JOBS` | Max concurrent processing jobs | 10 |
@@ -120,21 +134,43 @@ A robust backend service for processing CSV files and generating professional ou
 
 1. **Upload CSV** → File saved, job created in database
 2. **Start Processing** → URLs extracted, chunked jobs added to BullMQ queue
-3. **Worker Processing** → Chunks processed with OpenAI API calls
+3. **Worker Processing** → Chunks processed with AI service API calls
 4. **Progress Tracking** → Real-time updates to database
 5. **Completion** → Results available for download
 
 ## 🛠️ Development
 
+### AI Service Management
+
+The backend supports both OpenAI and Hugging Face services with easy switching:
+
+```bash
+# Check current AI service status
+node scripts/switch-ai-service.js status
+
+# Switch to OpenAI
+node scripts/switch-ai-service.js openai
+
+# Switch to Hugging Face
+node scripts/switch-ai-service.js huggingface
+
+# Use auto-detection
+node scripts/switch-ai-service.js auto
+```
+
 ### Dummy Mode
 
-For local development without OpenAI API costs:
+For local development without AI service API costs:
 
 ```env
 OPENAI_DUMMY_MODE=true
+# or
+HUGGINGFACE_DUMMY_MODE=true
 ```
 
 This generates realistic dummy openers with 2-3 second delays.
+
+📚 **For detailed AI service configuration, see [AI_SERVICE_SWITCHING.md](../AI_SERVICE_SWITCHING.md)**
 
 ### Chunked Processing
 

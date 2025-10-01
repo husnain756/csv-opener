@@ -1,12 +1,12 @@
 # CSV Opener App
 
-A web application that generates professional outreach openers from CSV files containing URLs using OpenAI. The app processes URLs without scraping content, relying only on URL context to generate tasteful 1-2 sentence openers.
+A web application that generates professional outreach openers from CSV files containing URLs using AI services (OpenAI or Hugging Face). The app processes URLs without scraping content, relying only on URL context to generate tasteful 1-2 sentence openers.
 
 ## Features
 
 - 📁 CSV file upload with preview
 - 🎯 URL column selection and validation
-- 🤖 OpenAI-powered opener generation
+- 🤖 AI-powered opener generation (OpenAI or Hugging Face)
 - 📊 Real-time progress tracking
 - 🔄 Automatic retry logic for failed requests
 - 📤 CSV export with results
@@ -44,7 +44,7 @@ csv-opener/
 2. **Set up environment variables:**
    ```bash
    cp backend/env.example backend/.env
-   # Edit backend/.env with your OpenAI API key, Redis URL, and Database URL
+   # Edit backend/.env with your AI service API keys, Redis URL, and Database URL
    ```
 
 3. **Prerequisites are automatically handled:**
@@ -69,9 +69,16 @@ csv-opener/
 Create `backend/.env` with the following variables:
 
 ```env
+# AI Service Configuration
+AI_SERVICE_TYPE=                    # 'openai', 'huggingface', or empty for auto-detection
+
 # OpenAI Configuration
 OPENAI_API_KEY=your_openai_api_key_here
 OPENAI_DUMMY_MODE=false
+
+# Hugging Face Configuration
+HUGGINGFACE_API_KEY=your_huggingface_api_key_here
+HUGGINGFACE_DUMMY_MODE=false
 
 # Database Configuration
 DATABASE_URL=postgresql://localhost:5432/csv_opener
@@ -106,6 +113,38 @@ MAX_RETRIES=3
 RETRY_DELAY=1000
 BACKOFF_MULTIPLIER=2
 ```
+
+## 🤖 AI Service Configuration
+
+The application supports both **OpenAI** and **Hugging Face** for generating outreach openers. You can easily switch between services or use auto-detection.
+
+### Quick AI Service Setup
+
+```bash
+# Check current AI service status
+node backend/scripts/switch-ai-service.js status
+
+# Switch to OpenAI
+node backend/scripts/switch-ai-service.js openai
+
+# Switch to Hugging Face
+node backend/scripts/switch-ai-service.js huggingface
+
+# Use auto-detection (recommended)
+node backend/scripts/switch-ai-service.js auto
+```
+
+### Auto-Detection Logic
+- If `AI_SERVICE_TYPE` is set, uses that service
+- If OpenAI has API key and not in dummy mode → uses OpenAI
+- If Hugging Face has API key and not in dummy mode → uses Hugging Face
+- Falls back to dummy mode for development
+
+### API Endpoints for AI Service Management
+- `GET /api/jobs/ai-service/status` - Check current service status
+- `POST /api/jobs/ai-service/refresh` - Refresh service configuration
+
+📚 **For detailed AI service configuration, switching, and troubleshooting, see [AI_SERVICE_SWITCHING.md](./AI_SERVICE_SWITCHING.md)**
 
 ## Usage
 
@@ -144,7 +183,7 @@ BACKOFF_MULTIPLIER=2
 - **PostgreSQL** for data persistence (jobs and URLs tracking)
 - **BullMQ** for job queue management with chunked processing
 - **Redis** for queue storage and caching
-- **OpenAI API** integration with retry logic and dummy mode
+- **AI Services** integration (OpenAI & Hugging Face) with retry logic and dummy mode
 - **Multer** for file uploads
 - **Winston** for logging
 - **Joi** for validation
@@ -160,7 +199,7 @@ BACKOFF_MULTIPLIER=2
 - 🗄️ **Database persistence** with PostgreSQL for job tracking
 - 📦 **Chunked processing** for handling large CSV files (50K+ rows)
 - 🔄 **Individual URL retry** capability
-- 🤖 **Dummy mode** for development without OpenAI costs
+- 🤖 **Dummy mode** for development without AI service costs
 
 ## Backend Implementation
 
@@ -180,7 +219,7 @@ The backend uses PostgreSQL with two main tables:
 ### Processing Flow
 1. **Upload** → CSV file saved, job created in database
 2. **Processing** → URLs extracted and chunked into BullMQ jobs (500 URLs per chunk)
-3. **Worker Processing** → Chunks processed with OpenAI API calls
+3. **Worker Processing** → Chunks processed with AI service API calls
 4. **Progress Tracking** → Real-time database updates
 5. **Completion** → Results available for download
 
@@ -191,9 +230,11 @@ The backend uses PostgreSQL with two main tables:
 - Individual URL retry capability
 
 ### Dummy Mode
-For local development without OpenAI API costs:
+For local development without AI service API costs:
 ```env
 OPENAI_DUMMY_MODE=true
+# or
+HUGGINGFACE_DUMMY_MODE=true
 ```
 This generates realistic dummy openers with 2-3 second delays.
 
@@ -240,10 +281,26 @@ The app is designed to run on a single server with:
 
 ## Cost Considerations
 
-- OpenAI API costs depend on model and token usage
-- Typical cost: ~$0.001-0.002 per URL processed
-- 1,000 URLs ≈ $1-2 in API costs
+- **OpenAI API costs** depend on model and token usage (~$0.001-0.002 per URL)
+- **Hugging Face API costs** vary by model (some models are free)
+- 1,000 URLs ≈ $1-2 in OpenAI costs (varies with Hugging Face)
 - Configure concurrency limits to control rate and cost
+- Use dummy mode for development to avoid API costs
+
+## 📚 Documentation
+
+This project includes comprehensive documentation for different aspects:
+
+### Core Documentation
+- **[AI_SERVICE_SWITCHING.md](./AI_SERVICE_SWITCHING.md)** - Complete guide for AI service configuration and switching
+- **[HUGGINGFACE_SETUP.md](./HUGGINGFACE_SETUP.md)** - Hugging Face API setup and configuration
+- **[backend/README.md](./backend/README.md)** - Backend architecture, API endpoints, and deployment
+- **[frontend/README.md](./frontend/README.md)** - Frontend architecture, components, and development guidelines
+
+### Quick Reference
+- **AI Service Switching**: `node backend/scripts/switch-ai-service.js [openai|huggingface|auto|status]`
+- **Service Status API**: `GET /api/jobs/ai-service/status`
+- **Service Refresh API**: `POST /api/jobs/ai-service/refresh`
 
 ## Support
 

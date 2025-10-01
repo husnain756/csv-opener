@@ -36,7 +36,7 @@ export class DatabaseService {
       connectionString: process.env.DATABASE_URL || 'postgresql://localhost:5432/csv_opener',
       max: 20,
       idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 2000,
+      connectionTimeoutMillis: 10000, // Increased from 2000 to 10000 (10 seconds)
     });
 
     this.initializeTables();
@@ -90,7 +90,8 @@ export class DatabaseService {
       logger.info('Database tables initialized successfully');
     } catch (error) {
       logger.error('Failed to initialize database tables:', error);
-      throw error;
+      logger.warn('Application will continue without database initialization - tables may need to be created manually');
+      // Don't throw error to prevent app crash - let it continue
     }
   }
 

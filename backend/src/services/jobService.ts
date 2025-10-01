@@ -143,7 +143,7 @@ export class JobService {
             parseInt(process.env.MAX_RETRIES || '3')
           );
 
-          row.opener = result.opener;
+          row.opener = result;
           row.status = 'completed';
           row.updatedAt = new Date();
           
